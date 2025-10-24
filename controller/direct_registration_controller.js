@@ -2102,8 +2102,7 @@ static async updateDocuments(req, res) {
       res.status(500).json({ success: false, error: err.message });
     }
   } 
-
-  static async getUserByMobileNumber(req, res) {
+static async getUserByMobileNumber(req, res) {
     try {
       const { mobile_number } = req.params;
       if (!mobile_number) {
@@ -2122,8 +2121,7 @@ static async updateDocuments(req, res) {
       res.status(500).json({ success: false, error: err.message });
     }
   }
-
-  // ✅ Update user profile
+// ✅ Update user profile
   static async updateUserProfile(req, res) {
     const {
       mobile_number,
@@ -2185,6 +2183,7 @@ static async updateDocuments(req, res) {
     }
   }
 
+
   // ✅ Get all states
   static async getAllStates(req, res) {
     try {
@@ -2196,7 +2195,7 @@ static async updateDocuments(req, res) {
     }
   }
 
-  // ✅ Get all genders
+ // ✅ Get all genders
   static async getAllGenders(req, res) {
     try {
       const [rows] = await db.query(queries.getAllGenders);

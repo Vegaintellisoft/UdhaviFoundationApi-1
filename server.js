@@ -217,6 +217,10 @@ if (serviceBookingController) {
     serviceBookingController.updateProviderConfiguration
   );
 
+   app.get('/api/booking/provider-configurations/:mobile_number',
+    serviceBookingController.getProviderConfigurationsByMobile
+);
+
   app.get('/api/booking/provider-configurations/:configId',
     serviceBookingController.getProviderConfigurationById
   );

@@ -3482,6 +3482,116 @@ static async toggleProviderConfigurationStatus(req, res) {
         });
     }
 }
+ // ✅ NEW: Get Provider Configurations by Mobile Number
+static async getProviderConfigurationsByMobile(req, res) {
+    const { mobile_number } = req.params;
+    console.log('📞 Received mobile number:', mobile_number);
+
+    try {
+      const query = `
+        SELECT 
+          psc.config_id AS id,
+          psc.provider_id,
+          psc.service_id,
+          psc.service_name,
+          psc.category_name,
+          psc.base_rate,
+          psc.base_rate_type,
+          psc.tax_percentage,
+          psc.status,
+          psc.service_image_url,
+          psc.is_active,
+          psc.created_at,
+          psc.updated_at,
+          psc.city,
+          psc.pincode,
+          psc.latitude,
+          psc.longitude,
+          ai.full_name AS provider_name,
+          ai.mobile_number AS provider_mobile,
+          ai.email_address AS provider_email
+        FROM provider_service_configurations psc
+        JOIN account_information ai 
+          ON psc.provider_id = ai.registration_id
+        WHERE ai.mobile_number = ?
+          AND psc.is_active = 1
+        ORDER BY psc.created_at DESC
+      `;
+
+      const [rows] = await db.execute(query, [mobile_number]);
+      console.log('📊 DB Result:', rows);
+
+      if (rows.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No provider configurations found for this mobile number',
+          data: {
+            configurations: [],
+            total_count: 0
+          }
+        });
+      }
+
+      const configurations = ServiceBookingController.mapConfig(rows);
+
+      return res.json({
+        success: true,
+        message: 'Provider configurations retrieved successfully',
+        data: {
+          configurations,
+          total_count: configurations.length
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error in getProviderConfigurationsByMobile:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Server error retrieving provider configurations',
+        error: error.message
+      });
+    }
+  }
+
+  // 🧮 Helper method to map DB rows to API response
+  static mapConfig(rows) {
+    return rows.map(config => {
+      const baseRate = parseFloat(config.base_rate);
+      const taxPercentage = parseFloat(config.tax_percentage || 0);
+      const taxAmount = (baseRate * taxPercentage) / 100;
+      const finalAmount = baseRate + taxAmount;
+
+      return {
+        id: config.id,
+        service_id: config.service_id,
+        name: config.service_name,
+        category: config.category_name,
+        location: {
+          city: config.city || null,
+          pincode: config.pincode || null,
+          latitude: config.latitude || null,
+          longitude: config.longitude || null
+        },
+        status: config.status,
+        provider: config.provider_name,
+        estimated_salary: `Rs.${Math.round(finalAmount)}`,
+        featured: false,
+        service_image: config.service_image_url
+          ? `/uploads/services/${path.basename(config.service_image_url)}`
+          : null,
+        base_rate: config.base_rate,
+        base_rate_type: config.base_rate_type,
+        tax_percentage: config.tax_percentage,
+        final_amount_with_tax: finalAmount,
+        provider_contact: {
+          mobile: config.provider_mobile,
+          email: config.provider_email
+        },
+        created_at: config.created_at,
+        updated_at: config.updated_at
+      };
+    });
+  }
 }
 
 module.exports = ServiceBookingController;
