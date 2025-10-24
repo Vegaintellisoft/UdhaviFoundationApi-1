@@ -4,133 +4,135 @@
 
 // ✅ Create new OTP or update existing
 const createOTPRequest = `
-INSERT INTO otp_requests (
-      mobile_number, 
-      otp, 
-      expires_at, 
-      attempts, 
-      created_at, 
-      verified
-    )
-    VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE), 0, NOW(), 0)
-    ON DUPLICATE KEY UPDATE
-      otp = VALUES(otp),
-      expires_at = VALUES(expires_at),
-      attempts = 0,
-      created_at = VALUES(created_at),
-      verified = 0;
+  INSERT INTO otp_requests (
+    mobile_number, 
+    otp, 
+    expires_at, 
+    attempts, 
+    created_at, 
+    verified
+  )
+  VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE), 0, NOW(), 0)
+  ON DUPLICATE KEY UPDATE
+    otp = VALUES(otp),
+    expires_at = VALUES(expires_at),
+    attempts = 0,
+    created_at = NOW(),
+    verified = 0;
 `;
 
 // ✅ Get latest OTP for verification
-
 const getOTPRequest = `
-  SELECT * FROM otp_requests
-    WHERE mobile_number = ?
-    ORDER BY created_at DESC
-    LIMIT 1;
+  SELECT *
+  FROM otp_requests
+  WHERE mobile_number = ?
+  ORDER BY created_at DESC
+  LIMIT 1;
 `;
 
 // ✅ Increment failed attempt count
 const updateOTPAttempts = `
-   UPDATE otp_requests
-    SET attempts = attempts + 1, updated_at = NOW()
-    WHERE mobile_number = ?;
+  UPDATE otp_requests
+  SET attempts = attempts + 1,
+      updated_at = NOW()
+  WHERE mobile_number = ?;
 `;
 
 // ✅ Verify OTP and mark as verified
 const verifyOTP = `
- UPDATE otp_requests
-    SET verified = 1, verified_at = NOW(), updated_at = NOW()
-    WHERE mobile_number = ? AND otp = ? 
-      AND expires_at > NOW() 
-      AND verified = 0;
+  UPDATE otp_requests
+  SET verified = 1, verified_at = NOW(), updated_at = NOW()
+  WHERE mobile_number = ? AND otp = ? 
+    AND expires_at > NOW() 
+    AND verified = 0
 `;
 
-// ✅ 2. Mark mobile as verified in account_information
+// ✅ Mark mobile as verified in account_information
 const updateMobileVerified = `
- UPDATE account_information
-    SET mobile_verified = 1, updated_at = NOW()
-    WHERE mobile_number = ?;
+  UPDATE account_information
+  SET mobile_verified = 1,
+      updated_at = NOW()
+  WHERE mobile_number = ?;
 `;
 
-// ✅ 3. Check if mobile number already registered
+// ✅ Check if mobile number already registered
 const checkMobileAlreadyRegistered = `
-
-   SELECT 
-      ur.registration_id,
-      ur.registration_status,
-      ai.full_name,
-      ai.mobile_number
-    FROM user_registrations ur
-    LEFT JOIN account_information ai 
-      ON ur.registration_id = ai.registration_id
-    WHERE ur.mobile_number = ?
-    LIMIT 1;
+  SELECT 
+    ur.registration_id,
+    ur.registration_status,
+    ai.full_name,
+    ai.mobile_number
+  FROM user_registrations ur
+  LEFT JOIN account_information ai 
+    ON ur.registration_id = ai.registration_id
+  WHERE ur.mobile_number = ?
+  LIMIT 1;
 `;
 
-// ✅ 4. Rate limiting: count OTP requests in the last hour
+// ✅ Rate limiting: count OTP requests in the last hour
 const checkRecentOTPRequests = `
   SELECT COUNT(*) AS request_count
-    FROM otp_requests
-    WHERE mobile_number = ?
-      AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR);
+  FROM otp_requests
+  WHERE mobile_number = ?
+    AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR);
 `;
 
-// ✅ 5. Clean expired OTPs
+// ✅ Clean expired OTPs
 const cleanExpiredOTP = `
- DELETE FROM otp_requests
-    WHERE expires_at < NOW()
-      OR created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR);
+  DELETE FROM otp_requests
+  WHERE expires_at < NOW()
+     OR created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR);
 `;
 
-// ✅ 6. Check OTP verification status
+// ✅ Check OTP verification status
 const statusOtp = `
   SELECT verified, verified_at
-    FROM otp_requests
-    WHERE mobile_number = ?
-    ORDER BY created_at DESC
-    LIMIT 1;
+  FROM otp_requests
+  WHERE mobile_number = ?
+  ORDER BY created_at DESC
+  LIMIT 1;
 `;
 
-// ✅ 7. Create registration for new users
-//    If the mobile already exists, just update session_token
+// ✅ Create or update registration (for new users)
 const createOrUpdateRegistration = `
- INSERT INTO user_registrations (
-      session_token,
-      mobile_number,
-      current_step,
-      registration_status,
-      created_at
-    )
-    VALUES (?, ?, 1, 'draft', CURRENT_TIMESTAMP)
-    ON DUPLICATE KEY UPDATE
-      session_token = VALUES(session_token),
-      updated_at = CURRENT_TIMESTAMP;
+  INSERT INTO user_registrations (
+    session_token,
+    mobile_number,
+    current_step,
+    registration_status,
+    created_at
+  )
+  VALUES (?, ?, 1, 'draft', CURRENT_TIMESTAMP)
+  ON DUPLICATE KEY UPDATE
+    session_token = VALUES(session_token),
+    updated_at = CURRENT_TIMESTAMP;
 `;
 
-// ✅ 8. Update session token only (for existing user)
+// ✅ Update session token only (for existing user)
 const updateRegistrationSession = `
-     UPDATE user_registrations
-    SET session_token = ?, updated_at = NOW()
-    WHERE registration_id = ?;
+  UPDATE user_registrations
+  SET session_token = ?,
+      updated_at = NOW()
+  WHERE registration_id = ?;
 `;
 
+// ✅ Get full registration details
 const getFullRegistrationDetails = `
-    SELECT 
-      ur.registration_id,
-      ur.session_token,
-      ur.mobile_number,
-      ur.registration_status,
-      ur.current_step,
-      ai.full_name,
-      ai.mobile_verified,
-      ai.updated_at AS account_updated_at
-    FROM user_registrations ur
-    LEFT JOIN account_information ai 
-      ON ur.registration_id = ai.registration_id
-    WHERE ur.registration_id = ?
-    LIMIT 1;
-  `;
+  SELECT 
+    ur.registration_id,
+    ur.session_token,
+    ur.mobile_number,
+    ur.registration_status,
+    ur.current_step,
+    ai.full_name,
+    ai.mobile_verified,
+    ai.updated_at AS account_updated_at
+  FROM user_registrations ur
+  LEFT JOIN account_information ai 
+    ON ur.registration_id = ai.registration_id
+  WHERE ur.registration_id = ?
+  LIMIT 1;
+`;
 
 
 // ====== MODIFIED SESSION MANAGEMENT QUERIES ======
@@ -726,6 +728,7 @@ module.exports = {
   getOTPRequest,
   updateOTPAttempts,
   verifyOTP,
+  updateMobileVerified,
   checkMobileAlreadyRegistered,
   checkRecentOTPRequests,
   cleanExpiredOTP,
