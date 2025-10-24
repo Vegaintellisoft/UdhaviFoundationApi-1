@@ -131,6 +131,98 @@ static async createRegistration(req, res) {
     }
 
 
+// static async savePersonalInfo(req, res) {
+//   console.log('🔄 Step 1 - savePersonalInfo called (direct)');
+//   console.log('📝 Request params:', req.params);
+//   console.log('📝 Request body:', req.body);
+//   console.log('📝 Request files:', req.files);
+
+//   try {
+//     const { registrationId } = req.params;
+//     const {
+//       first_name,
+//       last_name,
+//       date_of_birth,
+//       gender_id,
+//       nationality_id,
+//       languages_known,
+//       id_proof_type_id,
+//       id_proof_number
+//     } = req.body;
+
+//     // Validate registration exists
+//     const [registrationCheck] = await db.execute(queries.checkRegistrationExists, [registrationId]);
+//     if (registrationCheck.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         error: { message: 'Registration not found' }
+//       });
+//     }
+
+//     // Handle file uploads (profile photo and id proof)
+//     let profile_photo = null;
+//     let id_proof_document = null;
+
+//     if (req.files) {
+//       if (req.files.profile_photo) {
+//         profile_photo = req.files.profile_photo[0].filename;
+//       }
+//       if (req.files.id_proof_document) {
+//         id_proof_document = req.files.id_proof_document[0].filename;
+//       }
+//     }
+
+//     // Save or update personal info in DB
+//     await db.execute(queries.insertPersonalInfo, [
+//       registrationId,
+//       first_name,
+//       last_name,
+//       date_of_birth,
+//       gender_id,
+//       profile_photo,
+//       nationality_id,
+//       languages_known,
+//       id_proof_type_id,
+//       id_proof_number,
+//       id_proof_document
+//     ]);
+
+//     // Optionally: Log document verification if needed (you can keep this from your existing code)
+//     if (profile_photo) {
+//       await db.execute(queries.insertDocumentVerificationLog, [
+//         registrationId, 'profile_photo', profile_photo
+//       ]);
+//     }
+//     if (id_proof_document) {
+//       await db.execute(queries.insertDocumentVerificationLog, [
+//         registrationId, 'id_proof', id_proof_document
+//       ]);
+//     }
+
+//     // Update current step to next (e.g. 2)
+//     await db.execute(queries.updateRegistrationStep, [2, registrationId]);
+
+//     res.json({
+//       success: true,
+//       message: 'Personal information saved successfully',
+//       data: {
+//         currentStep: 2,
+//         documentsStatus: 'pending_verification'
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error('❌ Save personal info error:', error);
+//     res.status(500).json({
+//       success: false,
+//       error: {
+//         message: 'Failed to save personal information',
+//         details: error.message
+//       }
+//     });
+//   }
+// }
+
 static async savePersonalInfo(req, res) {
   console.log('🔄 Step 1 - savePersonalInfo called (direct)');
   console.log('📝 Request params:', req.params);
@@ -226,6 +318,63 @@ static async savePersonalInfo(req, res) {
 
 
 
+// static async saveContactAddress(req, res) {
+//     console.log('🔄 Step 2 - saveContactAddress called (direct with frontend lat/lng)');
+//     console.log('📝 Request params:', req.params);
+//     console.log('📝 Request body:', req.body);
+
+//     try {
+//         const { registrationId } = req.params;
+//         const {
+//             city,
+//             state_id,
+//             pincode,
+//             preferred_location_id,
+//             current_latitude,
+//             current_longitude,
+//             permanent_latitude,
+//             permanent_longitude
+//         } = req.body;
+
+//         // Validate registration exists
+//         const [registrationCheck] = await db.execute(queries.checkRegistrationExists, [registrationId]);
+//         if (registrationCheck.length === 0) {
+//             return res.status(404).json({
+//                 success: false,
+//                 error: { message: 'Registration not found' }
+//             });
+//         }
+
+//         console.log('💾 Saving contact address with frontend lat/lng...');
+//         await db.execute(queries.insertContactAddress, [
+//             registrationId,
+//             city,
+//             state_id,
+//             pincode,
+//             preferred_location_id,
+//             current_latitude,
+//             current_longitude,
+//             permanent_latitude,
+//             permanent_longitude
+//         ]);
+
+//         await db.execute(queries.updateRegistrationStep, [3, registrationId]);
+
+//         res.json({
+//             success: true,
+//             message: 'Contact information saved successfully',
+//             data: { currentStep: 3 }
+//         });
+
+//     } catch (error) {
+//         console.error('❌ Save contact address error:', error);
+//         res.status(500).json({
+//             success: false,
+//             error: { message: 'Failed to save contact information', details: error.message }
+//         });
+//     }
+// }
+
 static async saveContactAddress(req, res) {
     console.log('🔄 Step 2 - saveContactAddress called (direct with frontend lat/lng)');
     console.log('📝 Request params:', req.params);
@@ -283,11 +432,11 @@ static async saveContactAddress(req, res) {
     }
 }
 
-    static async saveServiceInfo(req, res) {
+static async saveServiceInfo(req, res) {
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
- 
+
     const { registrationId } = req.params;
     let {
       service_type_id,
@@ -298,7 +447,7 @@ static async saveContactAddress(req, res) {
       expected_salary,
       service_description
     } = req.body;
- 
+
     // ✅ Convert strings to arrays if needed
     if (typeof available_day_ids === 'string') {
       available_day_ids = available_day_ids.split(',').map(id => Number(id));
@@ -306,7 +455,7 @@ static async saveContactAddress(req, res) {
     if (typeof time_slot_ids === 'string') {
       time_slot_ids = time_slot_ids.split(',').map(id => Number(id));
     }
- 
+
     // ✅ Parse salary to float, store NULL if invalid/empty
     if (expected_salary !== undefined && expected_salary !== null && expected_salary !== '') {
       expected_salary = parseFloat(expected_salary);
@@ -314,7 +463,7 @@ static async saveContactAddress(req, res) {
     } else {
       expected_salary = null;
     }
- 
+
     // Check registration exists
     const [registrationCheck] = await connection.execute(
       queries.checkRegistrationExists,
@@ -324,13 +473,13 @@ static async saveContactAddress(req, res) {
       await connection.rollback();
       return res.status(404).json({ success: false, error: { message: 'Registration not found' } });
     }
- 
+
     // Handle service image upload
     let service_image = req.file ? req.file.filename : null;
- 
+
     // ✅ Insert / Update service info
     await connection.execute(
-      `INSERT INTO service_information
+      `INSERT INTO service_information 
         (registration_id, service_type_id, work_type_id, years_of_experience, available_day_ids, time_slot_ids, service_description, service_image, expected_salary)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
@@ -355,10 +504,10 @@ static async saveContactAddress(req, res) {
         expected_salary
       ]
     );
- 
+
     await connection.execute(queries.updateRegistrationStep, [4, registrationId]);
     await connection.commit();
- 
+
     res.json({
       success: true,
       message: 'Service information saved successfully',
@@ -373,7 +522,7 @@ static async saveContactAddress(req, res) {
         service_image
       }
     });
- 
+
   } catch (err) {
     await connection.rollback();
     console.error('Save service info error:', err);
@@ -384,90 +533,382 @@ static async saveContactAddress(req, res) {
 }
 
 
+//     static async saveServiceInfo(req, res) {
+//   const connection = await db.getConnection();
+//   try {
+//     await connection.beginTransaction();
+ 
+//     const { registrationId } = req.params;
+//     let {
+//       service_type_id,
+//       work_type_id,
+//       years_of_experience,
+//       available_day_ids,
+//       time_slot_ids,
+//       expected_salary,
+//       service_description
+//     } = req.body;
+ 
+//     // ✅ Convert strings to arrays if needed
+//     if (typeof available_day_ids === 'string') {
+//       available_day_ids = available_day_ids.split(',').map(id => Number(id));
+//     }
+//     if (typeof time_slot_ids === 'string') {
+//       time_slot_ids = time_slot_ids.split(',').map(id => Number(id));
+//     }
+ 
+//     // ✅ Parse salary to float, store NULL if invalid/empty
+//     if (expected_salary !== undefined && expected_salary !== null && expected_salary !== '') {
+//       expected_salary = parseFloat(expected_salary);
+//       if (isNaN(expected_salary)) expected_salary = null;
+//     } else {
+//       expected_salary = null;
+//     }
+ 
+//     // Check registration exists
+//     const [registrationCheck] = await connection.execute(
+//       queries.checkRegistrationExists,
+//       [registrationId]
+//     );
+//     if (!registrationCheck.length) {
+//       await connection.rollback();
+//       return res.status(404).json({ success: false, error: { message: 'Registration not found' } });
+//     }
+ 
+//     // Handle service image upload
+//     let service_image = req.file ? req.file.filename : null;
+ 
+//     // ✅ Insert / Update service info
+//     await connection.execute(
+//       `INSERT INTO service_information
+//         (registration_id, service_type_id, work_type_id, years_of_experience, available_day_ids, time_slot_ids, service_description, service_image, expected_salary)
+//        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+//        ON DUPLICATE KEY UPDATE
+//          service_type_id = VALUES(service_type_id),
+//          work_type_id = VALUES(work_type_id),
+//          years_of_experience = VALUES(years_of_experience),
+//          available_day_ids = VALUES(available_day_ids),
+//          time_slot_ids = VALUES(time_slot_ids),
+//          service_description = VALUES(service_description),
+//          service_image = COALESCE(VALUES(service_image), service_image),
+//          expected_salary = VALUES(expected_salary),
+//          updated_at = CURRENT_TIMESTAMP`,
+//       [
+//         registrationId,
+//         service_type_id || null,
+//         work_type_id || null,
+//         years_of_experience || null,
+//         available_day_ids ? JSON.stringify(available_day_ids) : null,
+//         time_slot_ids ? JSON.stringify(time_slot_ids) : null,
+//         service_description || null,
+//         service_image,
+//         expected_salary
+//       ]
+//     );
+ 
+//     await connection.execute(queries.updateRegistrationStep, [4, registrationId]);
+//     await connection.commit();
+ 
+//     res.json({
+//       success: true,
+//       message: 'Service information saved successfully',
+//       data: {
+//         expected_salary,  // ✅ now will show saved salary
+//         service_type_id,
+//         work_type_id,
+//         years_of_experience,
+//         available_days: available_day_ids,
+//         time_slots: time_slot_ids,
+//         service_description,
+//         service_image
+//       }
+//     });
+ 
+//   } catch (err) {
+//     await connection.rollback();
+//     console.error('Save service info error:', err);
+//     res.status(500).json({ success: false, error: err.message });
+//   } finally {
+//     connection.release();
+//   }
+// }
+
+
     // Save background check (Step 4) - WITH POLICE VERIFICATION STATUS
-    static async saveBackgroundCheck(req, res) {
-        console.log('🔄 Step 4 - saveBackgroundCheck called (direct)');
-        console.log('📝 Request params:', req.params);
-        console.log('📝 Request body:', req.body);
+    // static async saveBackgroundCheck(req, res) {
+    //     console.log('🔄 Step 4 - saveBackgroundCheck called (direct)');
+    //     console.log('📝 Request params:', req.params);
+    //     console.log('📝 Request body:', req.body);
         
-        try {
-            const { registrationId } = req.params;
-            const {
-                police_verification_done,
-                has_police_verification,
-                criminal_record_details,
-                reference1_name,
-                reference1_contact,
-                reference1_relationship_id,
-                reference2_name,
-                reference2_contact,
-                reference2_relationship_id
-            } = req.body;
+    //     try {
+    //         const { registrationId } = req.params;
+    //         const {
+    //             police_verification_done,
+    //             has_police_verification,
+    //             criminal_record_details,
+    //             reference1_name,
+    //             reference1_contact,
+    //             reference1_relationship_id,
+    //             reference2_name,
+    //             reference2_contact,
+    //             reference2_relationship_id
+    //         } = req.body;
 
-            // Validate registration exists
-            const [registrationCheck] = await db.execute(queries.checkRegistrationExists, [registrationId]);
-            if (registrationCheck.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    error: { message: 'Registration not found' }
-                });
-            }
+    //         // Validate registration exists
+    //         const [registrationCheck] = await db.execute(queries.checkRegistrationExists, [registrationId]);
+    //         if (registrationCheck.length === 0) {
+    //             return res.status(404).json({
+    //                 success: false,
+    //                 error: { message: 'Registration not found' }
+    //             });
+    //         }
 
-            // Handle file upload
-            let police_verification_document = null;
-            if (req.file) {
-                police_verification_document = req.file.filename;
+    //         // Handle file upload
+    //         let police_verification_document = null;
+    //         if (req.file) {
+    //             police_verification_document = req.file.filename;
                 
-                // Log document for verification with PENDING status
-                await db.execute(queries.insertDocumentVerificationLog, [
-                    registrationId, 'police_verification', police_verification_document
-                ]);
-            }
+    //             // Log document for verification with PENDING status
+    //             await db.execute(queries.insertDocumentVerificationLog, [
+    //                 registrationId, 'police_verification', police_verification_document
+    //             ]);
+    //         }
 
-            // Convert boolean values properly
-            const policeVerificationDone = police_verification_done === 'true' || police_verification_done === true || police_verification_done === 1;
-            const hasPoliceVerification = has_police_verification === 'true' || has_police_verification === true || has_police_verification === 1;
+    //         // Convert boolean values properly
+    //         const policeVerificationDone = police_verification_done === 'true' || police_verification_done === true || police_verification_done === 1;
+    //         const hasPoliceVerification = has_police_verification === 'true' || has_police_verification === true || has_police_verification === 1;
 
-            await db.execute(queries.insertBackgroundCheck, [
-                registrationId,
-                policeVerificationDone ? 1 : 0,
-                police_verification_document,
-                hasPoliceVerification ? 1 : 0,
-                criminal_record_details || null,
-                reference1_name || null,
-                reference1_contact || null,
-                reference1_relationship_id || null,
-                reference2_name || null,
-                reference2_contact || null,
-                reference2_relationship_id || null
-            ]);
+    //         await db.execute(queries.insertBackgroundCheck, [
+    //             registrationId,
+    //             policeVerificationDone ? 1 : 0,
+    //             police_verification_document,
+    //             hasPoliceVerification ? 1 : 0,
+    //             criminal_record_details || null,
+    //             reference1_name || null,
+    //             reference1_contact || null,
+    //             reference1_relationship_id || null,
+    //             reference2_name || null,
+    //             reference2_contact || null,
+    //             reference2_relationship_id || null
+    //         ]);
 
-            // Update current step
-            await db.execute(queries.updateRegistrationStep, [5, registrationId]);
+    //         // Update current step
+    //         await db.execute(queries.updateRegistrationStep, [5, registrationId]);
 
-            res.json({
-                success: true,
-                message: 'Background check information saved successfully',
-                data: { 
-                    currentStep: 5,
-                    policeVerificationStatus: 'pending',
-                    documentsStatus: police_verification_document ? 'pending_verification' : 'no_documents'
-                }
-            });
+    //         res.json({
+    //             success: true,
+    //             message: 'Background check information saved successfully',
+    //             data: { 
+    //                 currentStep: 5,
+    //                 policeVerificationStatus: 'pending',
+    //                 documentsStatus: police_verification_document ? 'pending_verification' : 'no_documents'
+    //             }
+    //         });
 
-        } catch (error) {
-            console.error('❌ Save background check error:', error);
-            res.status(500).json({
-                success: false,
-                error: { 
-                    message: 'Failed to save background check information',
-                    details: error.message
-                }
-            });
-        }
+    //     } catch (error) {
+    //         console.error('❌ Save background check error:', error);
+    //         res.status(500).json({
+    //             success: false,
+    //             error: { 
+    //                 message: 'Failed to save background check information',
+    //                 details: error.message
+    //             }
+    //         });
+    //     }
+    // }
+
+
+        static async saveBackgroundCheck(req, res) {
+  console.log('🔄 Step 4 - saveBackgroundCheck called');
+  console.log('Params:', req.params);
+  console.log('Body:', req.body);
+
+  try {
+    const { registrationId } = req.params;
+    const {
+      police_verification_done,
+      has_police_verification,
+      criminal_record_details,
+      reference1_name,
+      reference1_contact,
+      reference1_relationship_id,
+      reference2_name,
+      reference2_contact,
+      reference2_relationship_id
+    } = req.body;
+
+    // ✅ Check registration exists
+    const [registrationCheck] = await db.execute(
+      queries.checkRegistrationExists,
+      [registrationId]
+    );
+    if (!registrationCheck.length) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Registration not found' }
+      });
     }
 
+    // ✅ Handle file upload (optional)
+    let police_verification_document = null;
+    if (req.file) {
+      police_verification_document = req.file.filename;
+
+      await db.execute(queries.insertDocumentVerificationLog, [
+        registrationId,
+        'police_verification',
+        police_verification_document
+      ]);
+    }
+
+    // ✅ Convert boolean fields to 1/0
+    const policeVerificationDone =
+      police_verification_done === 'true' || police_verification_done === true || police_verification_done === '1'
+        ? 1
+        : 0;
+
+    const hasPoliceVerification =
+      has_police_verification === 'true' || has_police_verification === true || has_police_verification === '1'
+        ? 1
+        : 0;
+
+    // ✅ Insert or update background check
+    await db.execute(queries.insertBackgroundCheck, [
+      registrationId,
+      policeVerificationDone,
+      police_verification_document,
+      hasPoliceVerification,
+      criminal_record_details || null,
+      reference1_name || null,
+      reference1_contact || null,
+      reference1_relationship_id || null,
+      reference2_name || null,
+      reference2_contact || null,
+      reference2_relationship_id || null
+    ]);
+
+    // ✅ Update registration step
+    await db.execute(queries.updateRegistrationStep, [5, registrationId]);
+
+    res.json({
+      success: true,
+      message: 'Background check information saved successfully',
+      data: {
+        currentStep: 5,
+        policeVerificationStatus: 'pending',
+        documentsStatus: police_verification_document ? 'pending_verification' : 'no_documents'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Save background check error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        message: 'Failed to save background check information',
+        details: error.message
+      }
+    });
+  }
+}
+// 
     // Save document uploads (Step 5)
+    // static async saveDocumentUploads(req, res) {
+    //     console.log('🔄 Step 5 - saveDocumentUploads called (direct)');
+    //     console.log('📝 Request params:', req.params);
+    //     console.log('📝 Request files:', req.files);
+        
+    //     const connection = await db.getConnection();
+        
+    //     try {
+    //         await connection.beginTransaction();
+            
+    //         const { registrationId } = req.params;
+
+    //         // Validate registration exists
+    //         const [registrationCheck] = await connection.execute(queries.checkRegistrationExists, [registrationId]);
+    //         if (registrationCheck.length === 0) {
+    //             await connection.rollback();
+    //             return res.status(404).json({
+    //                 success: false,
+    //                 error: { message: 'Registration not found' }
+    //             });
+    //         }
+
+    //         let resume_bio_data = null;
+    //         let driving_license = null;
+    //         let experience_certificates = null;
+    //         const documentsUploaded = [];
+
+    //         if (req.files) {
+    //             if (req.files.resume_bio_data && req.files.resume_bio_data[0]) {
+    //                 resume_bio_data = req.files.resume_bio_data[0].filename;
+    //                 documentsUploaded.push('resume');
+                    
+    //                 await connection.execute(queries.insertDocumentVerificationLog, [
+    //                     registrationId, 'resume', resume_bio_data
+    //                 ]);
+    //             }
+                
+    //             if (req.files.driving_license && req.files.driving_license[0]) {
+    //                 driving_license = req.files.driving_license[0].filename;
+    //                 documentsUploaded.push('driving_license');
+                    
+    //                 await connection.execute(queries.insertDocumentVerificationLog, [
+    //                     registrationId, 'driving_license', driving_license
+    //                 ]);
+    //             }
+                
+    //             if (req.files.experience_certificates && req.files.experience_certificates[0]) {
+    //                 experience_certificates = req.files.experience_certificates[0].filename;
+    //                 documentsUploaded.push('experience_certificates');
+                    
+    //                 await connection.execute(queries.insertDocumentVerificationLog, [
+    //                     registrationId, 'experience_certificates', experience_certificates
+    //                 ]);
+    //             }
+    //         }
+
+    //         await connection.execute(queries.insertDocumentUploads, [
+    //             registrationId, 
+    //             resume_bio_data,
+    //             driving_license, 
+    //             experience_certificates
+    //         ]);
+
+    //         await connection.execute(queries.updateRegistrationStep, [6, registrationId]);
+            
+    //         await connection.commit();
+
+    //         res.json({
+    //             success: true,
+    //             message: 'Documents uploaded successfully',
+    //             data: { 
+    //                 currentStep: 6,
+    //                 documentsUploaded: documentsUploaded,
+    //                 documentsStatus: 'pending_verification',
+    //                 totalDocuments: documentsUploaded.length
+    //             }
+    //         });
+
+    //     } catch (error) {
+    //         if (connection) {
+    //             await connection.rollback();
+    //         }
+    //         console.error('❌ Save document uploads error:', error);
+    //         res.status(500).json({
+    //             success: false,
+    //             error: { 
+    //                 message: 'Failed to upload documents',
+    //                 details: error.message
+    //             }
+    //         });
+    //     } finally {
+    //         if (connection) {
+    //             connection.release();
+    //         }
+    //     }
+    // }
+
     static async saveDocumentUploads(req, res) {
         console.log('🔄 Step 5 - saveDocumentUploads called (direct)');
         console.log('📝 Request params:', req.params);
@@ -566,7 +1007,151 @@ static async saveContactAddress(req, res) {
     }
 
     // Save account information (Step 6) - Complete registration with SUBMITTED status
-    static async saveAccountInfo(req, res) {
+    // static async saveAccountInfo(req, res) {
+    //     const connection = await db.getConnection();
+        
+    //     try {
+    //         await connection.beginTransaction();
+            
+    //         const { registrationId } = req.params;
+    //         const {
+    //             full_name,
+    //             email_address,
+    //             mobile_number,
+    //             password,
+    //             bank_account_holder_name,
+    //             account_number,
+    //             ifsc_code,
+    //             terms_accepted,
+    //             information_confirmed
+    //         } = req.body;
+
+    //         // Validate required fields
+    //         const missingFields = [];
+    //         if (!full_name) missingFields.push('full_name');
+    //         if (!email_address) missingFields.push('email_address');
+    //         if (!mobile_number) missingFields.push('mobile_number');
+    //         if (!password) missingFields.push('password');
+    //         if (!terms_accepted) missingFields.push('terms_accepted');
+    //         if (!information_confirmed) missingFields.push('information_confirmed');
+
+    //         if (missingFields.length > 0) {
+    //             await connection.rollback();
+    //             return res.status(400).json({
+    //                 success: false,
+    //                 error: { 
+    //                     message: `Missing required fields: ${missingFields.join(', ')}`,
+    //                     missingFields 
+    //                 }
+    //             });
+    //         }
+
+    //         // Validate registration exists and get current status
+    //         const [registrationCheck] = await connection.execute(queries.checkRegistrationExists, [registrationId]);
+    //         if (registrationCheck.length === 0) {
+    //             await connection.rollback();
+    //             return res.status(404).json({
+    //                 success: false,
+    //                 error: { message: 'Registration not found' }
+    //             });
+    //         }
+
+    //         const oldStatus = registrationCheck[0].registration_status;
+
+    //         // Check for duplicates
+    //         const [emailResults] = await connection.execute(queries.checkEmailExistsSimple, [email_address]);
+    //         const [mobileResults] = await connection.execute(queries.checkMobileExistsSimple, [mobile_number]);
+
+    //         if (emailResults.length > 0) {
+    //             await connection.rollback();
+    //             return res.status(400).json({
+    //                 success: false,
+    //                 error: { message: 'Email address already exists' }
+    //             });
+    //         }
+
+    //         if (mobileResults.length > 0) {
+    //             await connection.rollback();
+    //             return res.status(400).json({
+    //                 success: false,
+    //                 error: { message: 'Mobile number already exists' }
+    //             });
+    //         }
+
+    //         // Hash password
+    //         const hashedPassword = await bcrypt.hash(password, 12);
+
+    //         // Handle file upload
+    //         let cancelled_cheque_passbook = null;
+    //         if (req.file) {
+    //             cancelled_cheque_passbook = req.file.filename;
+    //             await connection.execute(queries.insertDocumentVerificationLog, [
+    //                 registrationId, 'bank_document', cancelled_cheque_passbook
+    //             ]);
+    //         }
+
+    //         // Insert account information
+    //         const [insertResult] = await connection.execute(queries.insertAccountInfo, [
+    //             registrationId,
+    //             full_name,
+    //             email_address,
+    //             mobile_number,
+    //             hashedPassword,
+    //             bank_account_holder_name || null,
+    //             account_number || null,
+    //             ifsc_code || null,
+    //             cancelled_cheque_passbook,
+    //             terms_accepted === true || terms_accepted === 'true',
+    //             information_confirmed === true || information_confirmed === 'true'
+    //         ]);
+
+    //         // Complete registration
+    //         await connection.execute(queries.completeRegistration, [registrationId]);
+
+    //         // Log status change in history
+    //         await connection.execute(queries.insertRegistrationStatusHistory, [
+    //             registrationId, oldStatus, 'submitted', null, 'Registration completed by user'
+    //         ]);
+
+    //         await connection.commit();
+
+    //         res.json({
+    //             success: true,
+    //             message: 'Registration completed successfully! Your application is under review.',
+    //             data: {
+    //                 registrationCompleted: true,
+    //                 userId: registrationId,
+    //                 status: 'submitted',
+    //                 accountId: insertResult.insertId,
+    //                 nextSteps: [
+    //                     'Document verification in progress',
+    //                     'Police verification review pending',
+    //                     'Salary expectation under review',
+    //                     'You will be notified of approval status via email/SMS'
+    //                 ]
+    //             }
+    //         });
+
+    //     } catch (error) {
+    //         if (connection) {
+    //             await connection.rollback();
+    //         }
+    //         console.error('❌ Save account info error:', error);
+    //         res.status(500).json({
+    //             success: false,
+    //             error: { 
+    //                 message: 'Failed to complete registration',
+    //                 details: error.message
+    //             }
+    //         });
+    //     } finally {
+    //         if (connection) {
+    //             connection.release();
+    //         }
+    //     }
+    // }
+
+        static async saveAccountInfo(req, res) {
         const connection = await db.getConnection();
         
         try {
@@ -1517,6 +2102,110 @@ static async updateDocuments(req, res) {
       res.status(500).json({ success: false, error: err.message });
     }
   } 
+
+  static async getUserByMobileNumber(req, res) {
+    try {
+      const { mobile_number } = req.params;
+      if (!mobile_number) {
+        return res.status(400).json({ success: false, message: "mobile_number is required" });
+      }
+
+      const [rows] = await db.query(queries.getUserByMobileNumber, [mobile_number]);
+
+      if (!rows.length) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+
+      res.json({ success: true, data: rows[0] });
+    } catch (err) {
+      console.error("SQL ERROR (getUserByMobileNumber):", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ✅ Update user profile
+  static async updateUserProfile(req, res) {
+    const {
+      mobile_number,
+      full_name,
+      email_address,
+      gender_id,
+      date_of_birth,
+      current_address,
+      city,
+      state_id,
+      pincode
+    } = req.body;
+
+    try {
+      if (!mobile_number) {
+        return res.status(400).json({ success: false, message: "mobile_number is required" });
+      }
+
+      // Update account info
+      const [accountResult] = await db.query(
+        `UPDATE account_information 
+         SET full_name = ?, email_address = ? 
+         WHERE mobile_number = ?`,
+        [full_name, email_address, mobile_number]
+      );
+
+      if (accountResult.affectedRows === 0) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+
+      // Get registration_id
+      const [regRows] = await db.query(queries.getRegistrationIdByMobile, [mobile_number]);
+      const registration_id = regRows[0]?.registration_id;
+
+      if (!registration_id) {
+        return res.status(404).json({ success: false, message: "Registration not found" });
+      }
+
+      // Update personal_information
+      await db.query(
+        `UPDATE personal_information 
+         SET gender_id = ?, date_of_birth = ? 
+         WHERE registration_id = ?`,
+        [gender_id && gender_id !== 0 ? gender_id : null, date_of_birth, registration_id]
+      );
+
+      // Update contact_address_details
+      await db.query(
+        `UPDATE contact_address_details 
+         SET current_address = ?, city = ?, state_id = ?, pincode = ? 
+         WHERE registration_id = ?`,
+        [current_address, city, state_id && state_id !== 0 ? state_id : null, pincode, registration_id]
+      );
+
+      res.json({ success: true, message: "✅ User profile updated successfully" });
+    } catch (err) {
+      console.error("SQL ERROR (updateUserProfile):", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ✅ Get all states
+  static async getAllStates(req, res) {
+    try {
+      const [rows] = await db.query(queries.getAllStates);
+      res.json({ success: true, data: rows });
+    } catch (err) {
+      console.error("SQL ERROR (getAllStates):", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ✅ Get all genders
+  static async getAllGenders(req, res) {
+    try {
+      const [rows] = await db.query(queries.getAllGenders);
+      res.json({ success: true, data: rows });
+    } catch (err) {
+      console.error("SQL ERROR (getAllGenders):", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
 }
 
 module.exports = DirectRegistrationController;

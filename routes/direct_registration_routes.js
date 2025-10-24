@@ -149,6 +149,13 @@ router.put(
 router.get("/", directRegistrationController.getAllUsers);
 router.get("/:registration_id", directRegistrationController.getUserById);
 router.put("/:registration_id", directRegistrationController.editUser);
+
+// ✅ New route for mobile number
+router.get('/getUserByMobile/:mobile_number', directRegistrationController.getUserByMobileNumber);
+
+// ✅ New route to update user profile
+router.put("/user/update", directRegistrationController.updateUserProfile);
+
  
 
 module.exports = router;

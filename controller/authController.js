@@ -8,342 +8,172 @@ const { createApiResponse, sanitizeUserData } = require('../utils/helpers');
 class AuthController {
   // Login user - Updated to use user-based permissions
 static async login(req, res) {
-
     const { username, password } = req.body;
-
     try {
-
       // ✅ 1. Validate Input
-
       if (!username || !password) {
-
         return res
-
           .status(400)
-
           .json({ success: false, message: "Username and password are required" });
-
       }
-
       // ✅ 2. Find User
-
       const [users] = await db.execute(
-
         `SELECT
-
             u.id,
-
             u.name AS user_name,
-
             u.username,
-
             u.password,
-
             u.role_id,
-
             u.company AS company_name,
-
             u.department AS department_name,
-
             u.email,
-
             u.phone,
-
             u.gender,
-
             u.is_active,
-
             u.created_at,
-
             u.updated_at
-
          FROM users u
-
          WHERE u.username = ?`,
-
         [username]
-
       );
-
       if (!users.length) {
-
         return res.status(401).json({ success: false, message: "Invalid username or password" });
-
       }
-
       const user = users[0];
-
       // ✅ 3. Verify Password
-
       const isValid = await bcrypt.compare(password, user.password || "");
-
       if (!isValid) {
-
         return res.status(401).json({ success: false, message: "Invalid username or password" });
-
       }
-
       // ✅ 4. Get Role Name
-
       let roleName = "Not Assigned";
-
       if (user.role_id) {
-
         const [roles] = await db.execute("SELECT name FROM roles WHERE id = ?", [user.role_id]);
-
         if (roles.length) roleName = roles[0].name;
-
       }
-
       // ✅ 5. Fetch Modules & Permissions
-
       let modules = [];
-
       if (roleName.toLowerCase() === "superadmin") {
-
         // For superadmin, get all modules with parent info
-
         const [allModules] = await db.execute(
-
           `SELECT 
-
             m.id AS module_id, 
-
             m.name AS module_name, 
-
             m.route AS module_route,
-
             m.parent_id,
-
             pm.name AS parent_name,
-
             pm.route AS parent_route
-
           FROM modules m
-
           LEFT JOIN modules pm ON m.parent_id = pm.id
-
           ORDER BY
-
             CASE WHEN m.parent_id IS NULL THEN m.id ELSE m.parent_id END,
-
             CASE WHEN m.parent_id IS NULL THEN 0 ELSE 1 END,
-
             m.name`
-
         );
-
         modules = allModules.map(m => ({
-
           module_id: m.module_id,
-
           module_name: m.module_name,
-
           module_route: m.module_route,
-
           parent_id: m.parent_id,
-
           parent_name: m.parent_name,
-
           parent_route: m.parent_route,
-
           permission: {
-
             can_view: true,
-
             can_add: true,
-
             can_edit: true,
-
             can_delete: true
-
           }
-
         }));
-
       } else {
-
         // For other roles, get modules based on permissions
-
         const [permissions] = await db.execute(
-
           `SELECT
-
             m.id AS module_id,
-
             m.name AS module_name,
-
             m.route AS module_route,
-
             m.parent_id,
-
             pm.name AS parent_name,
-
             pm.route AS parent_route,
-
             p.can_view,
-
             p.can_add,
-
             p.can_edit,
-
             p.can_delete
-
           FROM role_permissions p
-
           JOIN modules m ON p.module_id = m.id
-
           LEFT JOIN modules pm ON m.parent_id = pm.id
-
           WHERE p.role_id = ?
-
           ORDER BY
-
             CASE WHEN m.parent_id IS NULL THEN m.id ELSE m.parent_id END,
-
             CASE WHEN m.parent_id IS NULL THEN 0 ELSE 1 END,
-
             m.name`,
-
           [user.role_id]
-
         );
-
         modules = permissions.map(m => ({
-
           module_id: m.module_id,
-
           module_name: m.module_name,
-
           module_route: m.module_route,
-
           parent_id: m.parent_id,
-
           parent_name: m.parent_name,
-
           parent_route: m.parent_route,
-
           permission: {
-
             can_view: !!m.can_view,
-
             can_add: !!m.can_add,
-
             can_edit: !!m.can_edit,
-
             can_delete: !!m.can_delete
-
           }
-
         }));
-
       }
-
       // ✅ 6. Permission Summary
-
       const permissionSummary = {
-
         totalModules: modules.length,
-
         viewableModules: modules.filter(m => m.permission.can_view).length,
-
         addableModules: modules.filter(m => m.permission.can_add).length,
-
         editableModules: modules.filter(m => m.permission.can_edit).length,
-
         deletableModules: modules.filter(m => m.permission.can_delete).length
-
       };
-
       // ✅ 7. Create JWT Token
-
       const tokenPayload = {
-
         id: user.id,
-
         username: user.username,
-
         role_id: user.role_id,
-
         role_name: roleName
-
       };
-
       const token = jwt.sign(
-
         tokenPayload,
-
         process.env.JWT_SECRET,
-
         { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
-
       );
-
       // ✅ 8. Build Response
-
       const userResponse = {
-
         id: user.id,
-
         name: user.user_name,
-
         username: user.username,
-
         role_id: user.role_id,
-
         role_name: roleName,
-
         email: user.email,
-
         phone: user.phone,
-
         gender: user.gender,
-
         company: user.company_name || "Not Assigned",
-
         department: user.department_name || "Not Assigned",
-
         is_active: user.is_active,
-
         created_at: user.created_at,
-
         updated_at: user.updated_at,
-
         modules,
-
         permissionSummary
-
       };
-
       return res.json({
-
         success: true,
-
         token,
-
         token_type: "Bearer",
-
         expires_in: process.env.JWT_EXPIRES_IN || "1d",
-
         user: userResponse
-
       });
-
     } catch (error) {
-
       console.error("Login Error:", error);
-
       return res.status(500).json({ success: false, message: "Internal server error" });
-
     }
-
   }
  
- 
- 
- 
- 
-
   // Logout user
   static async logout(req, res) {
     try {
