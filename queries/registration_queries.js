@@ -2,7 +2,6 @@
 
 // ====== MOBILE VERIFICATION QUERIES (NEW) ======
 
-// ✅ Create new OTP or update existing
 const createOTPRequest = `
 INSERT INTO otp_requests (
   mobile_number, 
@@ -108,6 +107,8 @@ const updateRegistrationSession = `
   SET session_token = ?, updated_at = NOW()
   WHERE registration_id = ?
 `;
+
+
 
 // ====== MODIFIED SESSION MANAGEMENT QUERIES ======
 
@@ -708,6 +709,7 @@ module.exports = {
   statusOtp,
   createOrUpdateRegistration,
   updateRegistrationSession,
+  getFullRegistrationDetails,
   
   // Session management (MODIFIED)
   createRegistrationSession,
