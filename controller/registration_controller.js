@@ -277,167 +277,163 @@ class RegistrationController {
     //         }
     //     }
     // }
+static async verifyOTPAndInitialize(req, res) {
+  const mysql = require('mysql2');
+  const connection = db; // keep your existing db.js export
 
-    static async verifyOTPAndInitialize(req, res) {
-    const connection = await db.getConnection();
-
-    try {
-      await connection.beginTransaction();
-      const { mobile_number, otp } = req.body;
-
-      const mobileRegex = /^[6-9]\d{9}$/;
-      const otpRegex = /^\d{6}$/;
-
-      // 🔸 Validation
-      if (!mobile_number || !otp) {
-        await connection.rollback();
-        return res.status(400).json({
-          success: false,
-          error: { message: 'Mobile number and OTP are required.' }
+  // simple promisify helper
+  const execute = (sql, params = []) =>
+    new Promise((resolve, reject) => {
+      // ensure connection is alive
+      if (connection.state === 'disconnected') {
+        connection.connect((err) => {
+          if (err) return reject(err);
+          connection.query(sql, params, (err2, results) => {
+            if (err2) return reject(err2);
+            resolve(results);
+          });
         });
-      }
-
-      if (!mobileRegex.test(mobile_number)) {
-        await connection.rollback();
-        return res.status(400).json({
-          success: false,
-          error: { message: 'Invalid mobile number format.' }
-        });
-      }
-
-      if (!otpRegex.test(otp)) {
-        await connection.rollback();
-        return res.status(400).json({
-          success: false,
-          error: { message: 'Invalid OTP format.' }
-        });
-      }
-
-      // 🔸 1. Get OTP details
-      const [otpRequests] = await connection.execute(queries.getOTPRequest, [mobile_number]);
-      if (otpRequests.length === 0) {
-        await connection.rollback();
-        return res.status(404).json({
-          success: false,
-          error: { message: 'OTP not found or expired. Please request a new OTP.', code: 'OTP_NOT_FOUND' }
-        });
-      }
-
-      const otpRequest = otpRequests[0];
-
-      // 🔸 2. Check OTP attempts
-      if (otpRequest.attempts >= 3) {
-        await connection.rollback();
-        return res.status(400).json({
-          success: false,
-          error: { message: 'Maximum OTP attempts exceeded. Please request a new OTP.', code: 'MAX_ATTEMPTS_EXCEEDED' }
-        });
-      }
-
-      // 🔸 3. Verify OTP value
-      if (otpRequest.otp !== otp) {
-        await connection.execute(queries.updateOTPAttempts, [mobile_number]);
-        await connection.rollback();
-        const remaining = 3 - (otpRequest.attempts + 1);
-        return res.status(400).json({
-          success: false,
-          error: {
-            message: 'Invalid OTP. Please check and try again.',
-            remainingAttempts: remaining,
-            code: 'INVALID_OTP'
-          }
-        });
-      }
-
-      // 🔸 4. Mark OTP verified
-      await connection.execute(queries.verifyOTP, [mobile_number, otp]);
-      await connection.execute(queries.updateMobileVerified, [mobile_number]);
-
-      // 🔸 5. Check if user already exists
-      const [existingUser] = await connection.execute(queries.checkMobileAlreadyRegistered, [mobile_number]);
-      const isExistingUser = existingUser.length > 0;
-
-      // 🔸 6. Create new session token
-      const sessionToken = crypto.randomBytes(32).toString('hex');
-      let registrationId;
-      let registrationStatus;
-
-      if (isExistingUser) {
-        // ✅ Existing user — just update session token
-        registrationId = existingUser[0].registration_id;
-        registrationStatus = existingUser[0].registration_status;
-
-        await connection.execute(queries.updateRegistrationSession, [sessionToken, registrationId]);
-
-        // ✅ Fetch full registration details
-        const [fullDetails] = await connection.execute(queries.getFullRegistrationDetails, [registrationId]);
-
-        await connection.commit();
-
-        console.log(`✅ Existing user verified. Mobile: ${mobile_number}, Reg ID: ${registrationId}`);
-
-        return res.json({
-          success: true,
-          message: 'Mobile number verified successfully.',
-          data: {
-            ...fullDetails[0],
-            sessionToken,
-            registrationId,
-            currentStep: 1,
-            totalSteps: 6,
-            registrationStatus,
-            mobileNumber: mobile_number,
-            mobileVerified: true,
-            isExistingUser: true,
-            navigateTo: 'service-provider'
-          }
-        });
-
       } else {
-        // 🆕 New user — insert registration record
-        const [insertResult] = await connection.execute(queries.createOrUpdateRegistration, [
-          sessionToken,
-          mobile_number
-        ]);
-
-        registrationId = insertResult.insertId;
-        registrationStatus = 'draft';
-
-        await connection.commit();
-
-        console.log(`✅ New user verified. Mobile: ${mobile_number}, Reg ID: ${registrationId}`);
-
-        return res.json({
-          success: true,
-          message: 'Mobile number verified successfully.',
-          data: {
-            sessionToken,
-            registrationId,
-            currentStep: 1,
-            totalSteps: 6,
-            registrationStatus,
-            mobileNumber: mobile_number,
-            mobileVerified: true,
-            isExistingUser: false,
-            navigateTo: 'register'
-          }
+        connection.query(sql, params, (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
         });
       }
-    } catch (error) {
-      if (connection) await connection.rollback();
-      console.error('❌ Verify OTP error:', error);
-      res.status(500).json({
+    });
+
+  try {
+    const { mobile_number, otp } = req.body;
+    const mobileRegex = /^[6-9]\d{9}$/;
+    const otpRegex = /^\d{6}$/;
+
+    if (!mobile_number || !otp)
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Mobile number and OTP are required.' },
+      });
+
+    if (!mobileRegex.test(mobile_number))
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid mobile number format.' },
+      });
+
+    if (!otpRegex.test(otp))
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid OTP format.' },
+      });
+
+    await execute('START TRANSACTION');
+
+    const otpRequests = await execute(queries.getOTPRequest, [mobile_number]);
+    if (!otpRequests.length) {
+      await execute('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        error: { message: 'OTP not found or expired.' },
+      });
+    }
+
+    const otpRequest = otpRequests[0];
+    if (otpRequest.attempts >= 3) {
+      await execute('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Maximum OTP attempts exceeded.' },
+      });
+    }
+
+    if (otpRequest.otp !== otp) {
+      await execute(queries.updateOTPAttempts, [mobile_number]);
+      await execute('ROLLBACK');
+      const remaining = 3 - (otpRequest.attempts + 1);
+      return res.status(400).json({
         success: false,
         error: {
-          message: 'Failed to verify OTP. Please try again.',
-          code: 'VERIFICATION_ERROR',
-          details: error.message
-        }
+          message: 'Invalid OTP. Please check and try again.',
+          remainingAttempts: remaining,
+        },
       });
-    } finally {
-      if (connection) connection.release();
     }
+
+    await execute(queries.verifyOTP, [mobile_number, otp]);
+    await execute(queries.updateMobileVerified, [mobile_number]);
+
+    const existingUser = await execute(queries.checkMobileAlreadyRegistered, [
+      mobile_number,
+    ]);
+    const sessionToken = require('crypto')
+      .randomBytes(32)
+      .toString('hex');
+
+    if (existingUser.length > 0) {
+      const registrationId = existingUser[0].registration_id;
+      const registrationStatus = existingUser[0].registration_status;
+
+      await execute(queries.updateRegistrationSession, [
+        sessionToken,
+        registrationId,
+      ]);
+
+      await execute('COMMIT');
+
+      return res.json({
+        success: true,
+        message: 'Mobile number verified successfully.',
+        data: {
+          sessionToken,
+          registrationId,
+          currentStep: 1,
+          totalSteps: 6,
+          registrationStatus,
+          mobileNumber: mobile_number,
+          mobileVerified: true,
+          isExistingUser: true,
+          navigateTo: 'service-provider',
+        },
+      });
+    } else {
+      const insertResult = await execute(queries.createOrUpdateRegistration, [
+        sessionToken,
+        mobile_number,
+      ]);
+
+      const registrationId = insertResult.insertId;
+      await execute('COMMIT');
+
+      return res.json({
+        success: true,
+        message: 'Mobile number verified successfully.',
+        data: {
+          sessionToken,
+          registrationId,
+          currentStep: 1,
+          totalSteps: 6,
+          registrationStatus: 'draft',
+          mobileNumber: mobile_number,
+          mobileVerified: true,
+          isExistingUser: false,
+          navigateTo: 'register',
+        },
+      });
+    }
+  } catch (error) {
+    try {
+      await new Promise((resolve) => db.query('ROLLBACK', resolve));
+    } catch {}
+    console.error('❌ Verify OTP error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error.message || 'Failed to verify OTP',
+        type: error.constructor.name,
+        timestamp: new Date().toISOString(),
+      },
+    });
   }
+}
+
 
     // Resend OTP
     // static async resendOTP(req, res) {
