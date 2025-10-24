@@ -2,64 +2,111 @@
 
 // ====== MOBILE VERIFICATION QUERIES (NEW) ======
 
-// Insert OTP request
+// ✅ Create new OTP or update existing
 const createOTPRequest = `
-  INSERT INTO otp_requests (mobile_number, otp, expires_at, attempts, created_at)
-  VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE), 0, NOW())
-  ON DUPLICATE KEY UPDATE
-    otp = VALUES(otp),
-    expires_at = VALUES(expires_at),
-    attempts = 0,
-    created_at = VALUES(created_at),
-    verified = 0
+INSERT INTO otp_requests (
+  mobile_number, 
+  otp, 
+  expires_at, 
+  attempts, 
+  created_at, 
+  verified
+)
+VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE), 0, NOW(), 0)
+ON DUPLICATE KEY UPDATE
+  otp = VALUES(otp),
+  expires_at = VALUES(expires_at),
+  attempts = 0,
+  created_at = VALUES(created_at),
+  verified = 0;
 `;
 
-// Get OTP request
+// ✅ Get latest OTP for verification
+
 const getOTPRequest = `
-  SELECT * FROM otp_requests 
-  WHERE mobile_number = ? 
-  AND expires_at > NOW() 
-  AND verified = 0
-  ORDER BY created_at DESC 
+  SELECT * FROM otp_requests
+  WHERE mobile_number = ?
+  ORDER BY created_at DESC
   LIMIT 1
 `;
 
-// Update OTP attempts
+// ✅ Increment failed attempt count
 const updateOTPAttempts = `
-  UPDATE otp_requests 
+  UPDATE otp_requests
   SET attempts = attempts + 1, updated_at = NOW()
-  WHERE mobile_number = ? AND otp = ?
+  WHERE mobile_number = ?
 `;
 
-// Verify and mark OTP as used
+// ✅ Verify OTP and mark as verified
 const verifyOTP = `
-  UPDATE otp_requests 
+  UPDATE otp_requests
   SET verified = 1, verified_at = NOW(), updated_at = NOW()
-  WHERE mobile_number = ? AND otp = ? AND expires_at > NOW() AND verified = 0
+  WHERE mobile_number = ? AND otp = ? 
+    AND expires_at > NOW() 
+    AND verified = 0
 `;
 
-// Check if mobile already registered
+// ✅ 2. Mark mobile as verified in account_information
+const updateMobileVerified = `
+  UPDATE account_information
+  SET mobile_verified = 1, updated_at = NOW()
+  WHERE mobile_number = ?
+`;
+
+// ✅ 3. Check if mobile number already registered
 const checkMobileAlreadyRegistered = `
-  SELECT ur.registration_id, ur.registration_status, ai.mobile_number, ai.full_name
+
+  SELECT 
+    ur.registration_id,
+    ur.registration_status,
+    ai.full_name,
+    ai.mobile_number
   FROM user_registrations ur
-  INNER JOIN account_information ai ON ur.registration_id = ai.registration_id
-  WHERE ai.mobile_number = ?
+  LEFT JOIN account_information ai 
+    ON ur.registration_id = ai.registration_id
+  WHERE ur.mobile_number = ?
   LIMIT 1
 `;
 
-// Check recent OTP requests (rate limiting)
+// ✅ 4. Rate limiting: count OTP requests in the last hour
 const checkRecentOTPRequests = `
-  SELECT COUNT(*) as request_count
-  FROM otp_requests 
-  WHERE mobile_number = ? 
-  AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+  SELECT COUNT(*) AS request_count
+  FROM otp_requests
+  WHERE mobile_number = ?
+    AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR);
 `;
 
-// Clean up expired OTP requests (utility query)
+// ✅ 5. Clean expired OTPs
 const cleanExpiredOTP = `
-  DELETE FROM otp_requests 
-  WHERE expires_at < NOW() 
-  OR created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+  DELETE FROM otp_requests
+  WHERE expires_at < NOW()
+    OR created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR);
+`;
+
+// ✅ 6. Check OTP verification status
+const statusOtp = `
+  SELECT verified, verified_at
+  FROM otp_requests
+  WHERE mobile_number = ?
+  ORDER BY created_at DESC
+  LIMIT 1;
+`;
+
+// ✅ 7. Create registration for new users
+//    If the mobile already exists, just update session_token
+const createOrUpdateRegistration = `
+  INSERT INTO user_registrations (session_token, mobile_number, current_step, registration_status, created_at)
+  VALUES (?, ?, 1, 'draft', CURRENT_TIMESTAMP)
+  ON DUPLICATE KEY UPDATE
+    session_token = VALUES(session_token),
+    updated_at = CURRENT_TIMESTAMP
+`;
+
+// ✅ 8. Update session token only (for existing user)
+const updateRegistrationSession = `
+  UPDATE user_registrations
+  SET session_token = ?, updated_at = NOW()
+  WHERE registration_id = ?
 `;
 
 // ====== MODIFIED SESSION MANAGEMENT QUERIES ======
@@ -140,12 +187,24 @@ const getPersonalInfo = `
 
 // ====== STEP 2: CONTACT & ADDRESS QUERIES ======
 
-// Insert/Update contact and address details
 const insertContactAddress = `
   INSERT INTO contact_address_details (
-    registration_id, current_address, permanent_address, city, state_id, 
-    pincode, preferred_location_id
-  ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    registration_id,
+    current_address,
+    permanent_address,
+    city,
+    state_id,
+    pincode,
+    preferred_location_id,
+    current_latitude,
+    current_longitude,
+    permanent_latitude,
+    permanent_longitude,
+    location_accuracy,
+    location_verified,
+    geocoding_status,
+    location_updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', 1, 'success', CURRENT_TIMESTAMP)
   ON DUPLICATE KEY UPDATE
     current_address = VALUES(current_address),
     permanent_address = VALUES(permanent_address),
@@ -153,15 +212,23 @@ const insertContactAddress = `
     state_id = VALUES(state_id),
     pincode = VALUES(pincode),
     preferred_location_id = VALUES(preferred_location_id),
+    current_latitude = VALUES(current_latitude),
+    current_longitude = VALUES(current_longitude),
+    permanent_latitude = VALUES(permanent_latitude),
+    permanent_longitude = VALUES(permanent_longitude),
+    location_accuracy = 'manual',
+    location_verified = 1,
+    geocoding_status = 'success',
+    location_updated_at = CURRENT_TIMESTAMP,
     updated_at = CURRENT_TIMESTAMP
 `;
 
-// Get contact and address details
+// ✅ Get contact and address details
 const getContactAddress = `
   SELECT 
     cad.*,
     s.state_name,
-    pl.location_name
+    pl.location_name AS preferred_work_location
   FROM contact_address_details cad
   LEFT JOIN states s ON cad.state_id = s.state_id
   LEFT JOIN preferred_locations pl ON cad.preferred_location_id = pl.location_id
@@ -173,7 +240,12 @@ const getContactAddress = `
 // Insert salary expectation with pending status
 const insertSalaryExpectation = `
   INSERT INTO salary_expectations (
-    registration_id, expected_salary, salary_type, currency_code, negotiable, salary_status
+    registration_id,
+    expected_salary,
+    salary_type,
+    currency_code,
+    negotiable,
+    salary_status
   ) VALUES (?, ?, ?, ?, ?, 0)
   ON DUPLICATE KEY UPDATE
     expected_salary = VALUES(expected_salary),
@@ -187,36 +259,60 @@ const insertSalaryExpectation = `
 // Insert/Update service information
 const insertServiceInfo = `
   INSERT INTO service_information (
-    registration_id, service_type_ids, work_type_ids, experience_years,
-    available_day_ids, time_slot_ids, service_description, service_image, salary_expectation_id
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    registration_id,
+    service_type_id,
+    work_type_id,
+    years_of_experience,
+    expected_salary,
+    available_day_ids,
+    time_slot_ids,
+    service_description,
+    service_image,
+    expectation_id
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON DUPLICATE KEY UPDATE
-    service_type_ids = VALUES(service_type_ids),
-    work_type_ids = VALUES(work_type_ids),
-    experience_years = VALUES(experience_years),
+    service_type_id = VALUES(service_type_id),
+    work_type_id = VALUES(work_type_id),
+    years_of_experience = VALUES(years_of_experience),
+    expected_salary = VALUES(expected_salary),
     available_day_ids = VALUES(available_day_ids),
     time_slot_ids = VALUES(time_slot_ids),
     service_description = VALUES(service_description),
     service_image = VALUES(service_image),
-    salary_expectation_id = VALUES(salary_expectation_id),
+    expectation_id = VALUES(expectation_id),
     updated_at = CURRENT_TIMESTAMP
 `;
 
 // Get service information with salary expectation
 const getServiceInfo = `
   SELECT 
-    si.*,
-    se.expected_salary,
+    si.service_info_id,
+    si.registration_id,
+    si.service_type_id,
+    st.service_name,
+    si.work_type_id,
+    wt.work_type_name,
+    si.years_of_experience,
+    si.expected_salary,
     se.salary_type,
     se.currency_code,
     se.negotiable,
-    se.salary_status,
-    se.admin_remarks as salary_remarks,
-    se.approved_salary
+    si.service_image,
+    si.available_day_ids,
+    si.time_slot_ids,
+    si.service_description,
+    GROUP_CONCAT(DISTINCT ad.day_name) AS available_days,
+    GROUP_CONCAT(DISTINCT ts.slot_name) AS time_slots
   FROM service_information si
-  LEFT JOIN salary_expectations se ON si.salary_expectation_id = se.expectation_id
+  LEFT JOIN salary_expectations se ON si.expectation_id = se.expectation_id
+  LEFT JOIN service_types st ON si.service_type_id = st.service_type_id
+  LEFT JOIN work_types wt ON si.work_type_id = wt.work_type_id
+  LEFT JOIN available_days ad ON JSON_CONTAINS(si.available_day_ids, CAST(ad.day_id AS JSON), '$')
+  LEFT JOIN time_slots ts ON JSON_CONTAINS(si.time_slot_ids, CAST(ts.time_slot_id AS JSON), '$')
   WHERE si.registration_id = ?
+  GROUP BY si.service_info_id
 `;
+
 
 // Get salary expectation by registration ID
 const getSalaryExpectationByRegistration = `
@@ -312,10 +408,19 @@ const insertDocumentVerificationLog = `
 // Insert/Update account information - mobile_number now comes from session
 const insertAccountInfo = `
   INSERT INTO account_information (
-    registration_id, full_name, email_address, mobile_number, password_hash,
-    bank_account_holder_name, account_number, ifsc_code, cancelled_cheque_passbook,
-    terms_accepted, information_confirmed
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    registration_id,
+    full_name,
+    email_address,
+    mobile_number,
+    password_hash,
+    bank_account_holder_name,
+    account_number,
+    ifsc_code,
+    cancelled_cheque_passbook,
+    terms_accepted,
+    information_confirmed,
+    profile_image
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   ON DUPLICATE KEY UPDATE
     full_name = VALUES(full_name),
     email_address = VALUES(email_address),
@@ -326,27 +431,41 @@ const insertAccountInfo = `
     cancelled_cheque_passbook = VALUES(cancelled_cheque_passbook),
     terms_accepted = VALUES(terms_accepted),
     information_confirmed = VALUES(information_confirmed),
+    profile_image = VALUES(profile_image),
     updated_at = CURRENT_TIMESTAMP
 `;
 
-// Get account information (without password)
+
+// ✅ Get Account Information (without password)
 const getAccountInfo = `
   SELECT 
-    account_id, registration_id, full_name, email_address, mobile_number,
-    bank_account_holder_name, account_number, ifsc_code, cancelled_cheque_passbook,
-    terms_accepted, information_confirmed, email_verified, mobile_verified,
-    created_at, updated_at
-  FROM account_information 
+    account_id,
+    registration_id,
+    full_name,
+    email_address,
+    mobile_number,
+    bank_account_holder_name,
+    account_number,
+    ifsc_code,
+    cancelled_cheque_passbook,
+    profile_image,
+    terms_accepted,
+    information_confirmed,
+    email_verified,
+    mobile_verified,
+    created_at,
+    updated_at
+  FROM account_information
   WHERE registration_id = ?
 `;
 
-// Check if email exists (excluding current registration)
+// ✅ Check if email exists (excluding current registration)
 const checkEmailExists = `
   SELECT account_id FROM account_information 
   WHERE email_address = ? AND registration_id != ?
 `;
 
-// Check if email exists (for new registrations)
+// ✅ Check if email exists (for new registrations)
 const checkEmailExistsSimple = `
   SELECT account_id FROM account_information 
   WHERE email_address = ?
@@ -553,6 +672,29 @@ const getRelationshipTypes = `SELECT relationship_id, relationship_name FROM rel
 const getCitiesByState = `SELECT city_id, city_name FROM cities WHERE state_id = ? AND status = 'Active' ORDER BY city_name`;
 const getDistrictsByState = `SELECT district_id, district_name FROM districts WHERE state_id = ? AND status = 'Active' ORDER BY district_name`;
 
+const GET_BASIC_USER_DETAILS_BY_MOBILE = `
+  SELECT 
+    ai.full_name AS full_name,
+    st.name AS service_name,
+    si.years_of_experience AS years_of_experience,
+    si.expected_salary AS expected_salary,
+    CASE
+      WHEN ur.registration_status = 'submitted' THEN 'Active'
+      ELSE 'Inactive'
+    END AS status
+  FROM account_information ai
+  LEFT JOIN service_information si 
+    ON ai.registration_id = si.registration_id
+  LEFT JOIN service_types st 
+    ON si.service_type_id = st.service_id
+  LEFT JOIN user_registrations ur
+    ON ai.registration_id = ur.registration_id
+  WHERE ai.mobile_number = ?
+  LIMIT 1
+`;
+
+
+
 // Export all queries
 module.exports = {
   // Mobile verification queries (NEW)
@@ -563,6 +705,9 @@ module.exports = {
   checkMobileAlreadyRegistered,
   checkRecentOTPRequests,
   cleanExpiredOTP,
+  statusOtp,
+  createOrUpdateRegistration,
+  updateRegistrationSession,
   
   // Session management (MODIFIED)
   createRegistrationSession,
@@ -623,5 +768,10 @@ module.exports = {
   getWorkTypes,
   getAvailableDays,
   getTimeSlots,
-  getRelationshipTypes
+  getRelationshipTypes,
+
+
+  // New //
+
+  GET_BASIC_USER_DETAILS_BY_MOBILE
 };

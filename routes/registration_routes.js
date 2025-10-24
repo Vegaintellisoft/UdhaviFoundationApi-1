@@ -429,4 +429,7 @@ router.get('/dropdowns/available-days', dropdownController.getAvailableDays);
 router.get('/dropdowns/time-slots', dropdownController.getTimeSlots);
 router.get('/dropdowns/relationship-types', dropdownController.getRelationshipTypes);
 
+
+router.get('/user-details/:mobile_number', registrationController.getBasicUserDetailsByMobile);
+
 module.exports = router;
