@@ -2941,6 +2941,115 @@ static async getAvailableProviders(req, res) {
 }
 
 // 3. ASSIGN PROVIDER TO BOOKING
+// static async assignProvider(req, res) {
+//     try {
+//         const { booking_id } = req.params;
+//         const { 
+//             provider_id, 
+//             estimated_cost, 
+//             assignment_notes,
+//             admin_id = 'system'
+//         } = req.body;
+
+//         if (!provider_id) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Provider ID is required'
+//             });
+//         }
+
+//         // Get booking details
+//         const [bookingResult] = await db.execute(`
+//             SELECT * FROM service_bookings 
+//             WHERE id = ? OR booking_id = ?
+//         `, [booking_id, booking_id]);
+
+//         if (bookingResult.length === 0) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'Booking not found'
+//             });
+//         }
+
+//         const booking = bookingResult[0];
+
+//         // Get provider details
+//         const [providerResult] = await db.execute(`
+//             SELECT ai.*, psc.service_name, psc.base_rate, psc.base_rate_type
+//             FROM account_information ai
+//             LEFT JOIN provider_service_configurations psc 
+//                 ON ai.registration_id = psc.provider_id AND psc.service_id = ?
+//             WHERE ai.registration_id = ?
+//         `, [booking.service_id, provider_id]);
+
+//         if (providerResult.length === 0) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'Provider not found'
+//             });
+//         }
+
+//         const provider = providerResult[0];
+
+//         // Update booking with provider assignment
+//         const [updateResult] = await db.execute(`
+//             UPDATE service_bookings 
+//             SET 
+//                 assigned_provider_id = ?,
+//                 booking_status = 'assigned',
+//                 estimated_cost = ?,
+//                 assignment_date = NOW(),
+//                 assignment_notes = ?,
+//                 updated_at = NOW()
+//             WHERE id = ?
+//         `, [provider_id, estimated_cost || booking.total_amount, assignment_notes, booking.id]);
+
+//         if (updateResult.affectedRows === 0) {
+//             return res.status(500).json({
+//                 success: false,
+//                 message: 'Failed to assign provider'
+//             });
+//         }
+
+//         // Log the assignment
+//         try {
+//             await db.execute(`
+//                 INSERT INTO booking_assignment_history 
+//                 (booking_id, provider_id, assigned_by, assignment_date, notes)
+//                 VALUES (?, ?, ?, NOW(), ?)
+//             `, [booking.id, provider_id, admin_id, assignment_notes]);
+//         } catch (logError) {
+//             console.log('Assignment history logging failed:', logError);
+//             // Continue - this is not critical
+//         }
+
+//         res.json({
+//             success: true,
+//             message: 'Provider assigned successfully',
+//             data: {
+//                 booking_id: booking.booking_id,
+//                 provider_assigned: {
+//                     id: provider_id,
+//                     name: provider.full_name,
+//                     mobile: provider.mobile_number,
+//                     email: provider.email_address,
+//                     service: provider.service_name
+//                 },
+//                 booking_status: 'assigned',
+//                 estimated_cost: estimated_cost || booking.total_amount,
+//                 assignment_date: new Date().toISOString(),
+//                 assignment_notes: assignment_notes
+//             }
+//         });
+
+//     } catch (error) {
+//         console.error('Assign provider error:', error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Server error assigning provider'
+//         });
+//     }
+// }
 static async assignProvider(req, res) {
     try {
         const { booking_id } = req.params;
@@ -3046,10 +3155,12 @@ static async assignProvider(req, res) {
         console.error('Assign provider error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error assigning provider'
+            message: 'Server error assigning provider',
+            error: error.message
         });
     }
 }
+
 
 // 4. UPDATE BOOKING NOTES
 static async updateBookingNotes(req, res) {
@@ -3206,36 +3317,36 @@ static async cancelBooking(req, res) {
 }
 
 // 3. ASSIGN PROVIDER TO BOOKING  
-static async assignProvider(req, res) {
-    try {
-        const { booking_id } = req.params;
-        const { provider_id, assignment_notes } = req.body;
+// static async assignProvider(req, res) {
+//     try {
+//         const { booking_id } = req.params;
+//         const { provider_id, assignment_notes } = req.body;
 
-        if (!provider_id) {
-            return res.status(400).json({
-                success: false,
-                message: 'Provider ID is required'
-            });
-        }
+//         if (!provider_id) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Provider ID is required'
+//             });
+//         }
 
-        res.json({
-            success: true,
-            message: 'Provider assigned successfully',
-            data: {
-                booking_id,
-                provider_id,
-                assignment_notes,
-                assigned_at: new Date().toISOString()
-            }
-        });
-    } catch (error) {
-        console.error('Assign provider error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error assigning provider'
-        });
-    }
-}
+//         res.json({
+//             success: true,
+//             message: 'Provider assigned successfully',
+//             data: {
+//                 booking_id,
+//                 provider_id,
+//                 assignment_notes,
+//                 assigned_at: new Date().toISOString()
+//             }
+//         });
+//     } catch (error) {
+//         console.error('Assign provider error:', error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Server error assigning provider'
+//         });
+//     }
+// }
 
 // 4. UPDATE BOOKING NOTES
 static async updateBookingNotes(req, res) {
@@ -3482,6 +3593,7 @@ static async toggleProviderConfigurationStatus(req, res) {
         });
     }
 }
+
  // ✅ NEW: Get Provider Configurations by Mobile Number
 static async getProviderConfigurationsByMobile(req, res) {
     const { mobile_number } = req.params;
@@ -3591,6 +3703,123 @@ static async getProviderConfigurationsByMobile(req, res) {
         updated_at: config.updated_at
       };
     });
+  }
+  static async getBookedUsersByRegistrationId(req, res) {
+    const { registration_id } = req.params;
+    console.log("📋 Received registration_id:", registration_id);
+
+    try {
+      // ✅ Step 1: Check which columns exist in user_registrations
+      const [urCols] = await db.execute(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = 'user_registrations'
+      `);
+      const userCols = urCols.map(c => c.COLUMN_NAME);
+
+      // ✅ Step 2: Check which columns exist in service_information
+      const [siCols] = await db.execute(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = 'service_information'
+      `);
+      const serviceCols = siCols.map(c => c.COLUMN_NAME);
+
+      // ✅ Step 3: Choose safe columns (skip if not found)
+      const nameCol = userCols.includes("full_name")
+        ? "ur.full_name"
+        : userCols.includes("first_name") && userCols.includes("last_name")
+        ? "CONCAT(ur.first_name, ' ', ur.last_name)"
+        : userCols.includes("first_name")
+        ? "ur.first_name"
+        : "'Unknown'";
+
+      const serviceJoinCol = serviceCols.includes("service_info_id")
+        ? "si.service_info_id"
+        : serviceCols.includes("id")
+        ? "si.id"
+        : null;
+
+      const serviceDisplayCol = serviceCols.includes("service_type_id")
+        ? "si.service_type_id"
+        : serviceCols.includes("service_name")
+        ? "si.service_name"
+        : serviceCols.includes("service_title")
+        ? "si.service_title"
+        : "'Unknown Service'";
+
+      // ✅ Step 4: Build dynamic JOIN only if service_info_id exists
+      const serviceJoin = serviceJoinCol
+        ? `LEFT JOIN service_information si ON sb.service_id = ${serviceJoinCol}`
+        : "";
+
+      // ✅ Step 5: Build query
+      const query = `
+        SELECT 
+          ${nameCol} AS customer_name,
+          sb.service_address AS customer_address,
+          sb.service_start_date AS booking_date,
+          CASE
+            WHEN HOUR(sb.service_start_time) BETWEEN 5 AND 11 THEN 'Morning'
+            WHEN HOUR(sb.service_start_time) BETWEEN 12 AND 17 THEN 'Afternoon'
+            WHEN HOUR(sb.service_start_time) BETWEEN 18 AND 23 THEN 'Evening'
+            ELSE 'Night'
+          END AS shift,
+          ${serviceDisplayCol} AS service_display,
+          sb.booking_status,
+          sb.payment_status,
+          sb.total_amount,
+          sb.created_at
+        FROM service_bookings sb
+        JOIN user_registrations ur 
+          ON sb.customer_id = ur.registration_id
+        ${serviceJoin}
+        WHERE sb.assigned_provider_id = ?
+        ORDER BY sb.service_start_date DESC
+      `;
+
+      console.log("🔍 Built Query:\n", query);
+
+      // ✅ Step 6: Run safely
+      const [rows] = await db.execute(query, [registration_id]);
+      console.log("📊 Found rows:", rows.length);
+
+      if (!rows.length) {
+        return res.json({
+          success: true,
+          message: "No bookings found for this provider",
+          data: { bookings: [], total_count: 0 },
+        });
+      }
+
+      // ✅ Step 7: Format clean response
+      const bookings = rows.map((r) => ({
+        name: r.customer_name || "N/A",
+        address: r.customer_address || "N/A",
+        date: r.booking_date || "N/A",
+        shift: r.shift || "N/A",
+        service: r.service_display || "N/A",
+        status: r.booking_status || "N/A",
+        payment_status: r.payment_status || "N/A",
+        amount: r.total_amount || 0,
+      }));
+
+      return res.json({
+        success: true,
+        message: "Bookings retrieved successfully",
+        data: { bookings, total_count: bookings.length },
+      });
+
+    } catch (error) {
+      console.error("❌ Error in getBookedUsersByRegistrationId:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Server error retrieving booked users",
+        error: error.message,
+      });
+    }
   }
 }
 

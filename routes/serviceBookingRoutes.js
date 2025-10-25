@@ -757,4 +757,7 @@ router.patch('/provider-configurations/:configId/toggle-status',
     ServiceBookingController.toggleProviderConfigurationStatus  // ✅ CORRECT
 );
 
+// 📘 Route to get booked users by registration_id
+router.get("/booked-users/:registration_id", ServiceBookingController.getBookedUsersByRegistrationId);
+
 module.exports = router;

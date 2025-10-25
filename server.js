@@ -165,12 +165,501 @@ if (directRegistrationController) {
 
 const serviceBookingController = loadModule('./controller/serviceBookingController', 'Service Booking Controller');
 
+
+// if (serviceBookingController) {
+//   console.log('Registering Service Booking routes directly...');
+  
+//   const { body, param,query, validationResult } = require('express-validator');
+  
+ 
+//    const handleValidationErrors = (req, res, next) => {
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Validation failed',
+//         errors: errors.array()
+//       });
+//     }
+//     next();
+//   };
+
+//   // Basic Service Booking Routes
+//   app.get('/api/booking/services', serviceBookingController.getAllServices);
+//   app.get('/api/booking/filters/:service_id', serviceBookingController.getServiceFilters);
+//   app.post('/api/booking/create', serviceBookingController.createBooking);
+//   app.get('/api/booking/customer/:customer_id', serviceBookingController.getCustomerBookings);
+//   app.get('/api/booking/details/:booking_id', serviceBookingController.getBookingDetails);
+//   app.patch('/api/booking/status/:booking_id', serviceBookingController.updateBookingStatus);
+//   app.patch('/api/booking/cancel/:booking_id', serviceBookingController.cancelBooking);
+//   app.get('/api/booking/provider/:service_provider_id', serviceBookingController.getServiceProviderBookings);
+//   app.get('/api/booking/search', serviceBookingController.searchBookings);
+//   app.get('/api/booking/stats', serviceBookingController.getBookingStats);
+
+//   // Provider Configuration Routes
+//   app.post('/api/booking/provider/save-service-config',
+//     uploadConfigs.serviceImage,
+//     handleUploadError,
+//     serviceBookingController.saveProviderServiceConfiguration
+//   );
+
+//   app.post('/api/booking/search-providers-by-filters',
+//     [
+//       body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+//       body('customer_filters').isArray({ min: 1 }).withMessage('Customer filters required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.searchProvidersByFilters
+//   );
+  
+//  app.get('/api/booking/providers', 
+//         serviceBookingController.getServiceProviders
+//     );
+
+//   app.get('/api/booking/provider/:provider_id/service-configs',
+//     [
+//       param('provider_id').isInt({ min: 1 }).withMessage('Valid provider ID required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.getProviderServiceConfigurations
+//   );
+
+//   // NEW: Provider Table Management Routes
+//   app.get('/api/booking/provider-configurations', 
+//       serviceBookingController.getAllProviderConfigurations
+//   );
+
+//   app.put('/api/booking/provider-configurations/:configId',
+//       uploadConfigs.serviceImage,
+//       handleUploadError,
+//       serviceBookingController.updateProviderConfiguration
+//   );
+
+//   app.get('/api/booking/provider-configurations/:configId',
+//       serviceBookingController.getProviderConfigurationById
+//   );
+
+//   // NEW: Toggle provider configuration status
+// app.patch('/api/booking/provider-configurations/:configId/toggle-status',
+//     serviceBookingController.toggleProviderConfigurationStatus
+// );
+
+//   // Utility Routes
+//   app.get('/api/booking/status-options', (req, res) => {
+//     res.json({
+//       success: true,
+//       message: 'Booking status options retrieved',
+//       data: {
+//         status_options: [
+//           { value: 'pending', label: 'Pending Confirmation', color: 'orange' },
+//           { value: 'confirmed', label: 'Confirmed', color: 'green' },
+//           { value: 'in_progress', label: 'In Progress', color: 'blue' },
+//           { value: 'completed', label: 'Completed', color: 'green' },
+//           { value: 'cancelled', label: 'Cancelled', color: 'red' }
+//         ]
+//       }
+//     });
+//   });
+
+//   app.get('/api/booking/categories', (req, res) => {
+//     res.json({
+//       success: true,
+//       message: 'Service categories retrieved',
+//       data: {
+//         categories: [
+//           { id: 1, name: 'Child Care', description: 'Baby sitting and child care services' },
+//           { id: 2, name: 'Senior Care', description: 'Elderly care and assistance services' },
+//           { id: 3, name: 'Household', description: 'Cooking and household management' },
+//           { id: 4, name: 'Maintenance', description: 'Garden and property maintenance' },
+//           { id: 5, name: 'Transportation', description: 'Driver and transportation services' },
+//           { id: 6, name: 'Cleaning', description: 'House cleaning and sanitization' },
+//           { id: 7, name: 'Pet Services', description: 'Pet care and grooming services' }
+//         ]
+//       }
+//     });
+//   });
+
+//   app.get('/api/booking/health', (req, res) => {
+//     res.json({
+//       success: true,
+//       message: 'Service Booking API is healthy',
+//       timestamp: new Date().toISOString(),
+//       version: '2.0.0'
+//     });
+//   });
+
+//   app.get('/api/booking/docs', (req, res) => {
+//     res.json({
+//       title: 'Service Booking API Documentation',
+//       version: '2.0.0',
+//       baseURL: '/api/booking',
+//       endpoints: {
+//         services: 'GET /services - Get all services',
+//         filters: 'GET /filters/:service_id - Get service filters',
+//         create: 'POST /create - Create booking',
+//         customer: 'GET /customer/:customer_id - Get customer bookings',
+//         details: 'GET /details/:booking_id - Get booking details',
+//         providerConfig: 'POST /provider/save-service-config - Save provider config',
+//         searchProviders: 'POST /search-providers-by-filters - Search providers',
+//         getConfigs: 'GET /provider/:provider_id/service-configs - Get provider configs',
+//         // NEW TABLE APIS
+//         tableConfigs: 'GET /provider-configurations - Get all for table',
+//         editConfig: 'PUT /provider-configurations/:id - Update config', 
+//         viewConfig: 'GET /provider-configurations/:id - View single config'
+//       }
+//     });
+//   });
+// //new 
+//    app.post('/api/booking/save-filters',
+//     [
+//       body('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
+//       body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+//       body('customer_name').optional().isString().withMessage('Customer name must be string')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.saveCustomerFilters
+//   );
+
+//   app.get('/api/booking/booking-details/:customer_id/:service_id',
+//     [
+//       param('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
+//       param('service_id').isInt({ min: 1 }).withMessage('Valid service ID required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.getBookingDetails
+//   );
+
+//   app.post('/api/booking/confirm-booking',
+//     [
+//       body('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
+//       body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+//       body('address').notEmpty().withMessage('Address is required'),
+//       body('start_date').isDate().withMessage('Valid start date required'),
+//       body('total_amount').isFloat({ min: 0 }).withMessage('Valid total amount required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.saveBooking
+//   );
+
+//   app.get('/api/booking/service-filters/:service_id',
+//     serviceBookingController.getServiceFilters
+//   );
+
+//   // NEW: Admin Booking Management Routes
+//   app.get('/api/admin/bookings', 
+//     [
+//       query('status').optional().isIn(['all', 'confirmed', 'assigned', 'in_progress', 'completed', 'cancelled']),
+//       query('service').optional().isIn(['all', '1', '2', '3', '4', '5']),
+//       query('from_date').optional().isDate(),
+//       query('to_date').optional().isDate(),
+//       query('page').optional().isInt({ min: 1 }),
+//       query('limit').optional().isInt({ min: 1, max: 50 })
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.getAdminBookings
+//   );
+
+//   app.get('/api/admin/bookings/:booking_id/available-providers',
+//     [
+//       param('booking_id').notEmpty().withMessage('Booking ID is required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.getAvailableProviders
+//   );
+
+//   app.post('/api/admin/bookings/:booking_id/assign-provider',
+//     [
+//       param('booking_id').notEmpty().withMessage('Booking ID is required'),
+//       body('provider_id').isInt({ min: 1 }).withMessage('Valid provider ID is required'),
+//       body('estimated_cost').optional().isFloat({ min: 0 }).withMessage('Estimated cost must be positive'),
+//       body('assignment_notes').optional().isString().isLength({ max: 1000 }).withMessage('Notes too long')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.assignProvider
+//   );
+
+//   app.put('/api/admin/bookings/:booking_id/notes',
+//     [
+//       param('booking_id').notEmpty().withMessage('Booking ID is required'),
+//       body('notes').isString().isLength({ max: 2000 }).withMessage('Notes too long')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.updateBookingNotes
+//   );
+
+//   app.get('/api/admin/bookings/statistics',
+//     serviceBookingController.getAdminBookingStatistics
+//   );
+
+//   app.patch('/api/admin/bookings/bulk-update',
+//     [
+//       body('booking_ids').isArray({ min: 1 }).withMessage('At least one booking ID required'),
+//       body('status').isIn(['confirmed', 'assigned', 'in_progress', 'completed', 'cancelled']),
+//       body('notes').optional().isString()
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.bulkUpdateBookings
+//   );
+
+//   app.post('/api/admin/bookings/:booking_id/reassign',
+//     [
+//       param('booking_id').notEmpty().withMessage('Booking ID is required'),
+//       body('new_provider_id').isInt({ min: 1 }).withMessage('Valid provider ID required'),
+//       body('reason').isString().notEmpty().withMessage('Reason is required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.reassignProvider
+//   );
+
+//   app.get('/api/admin/bookings/:booking_id/history',
+//     serviceBookingController.getAssignmentHistory
+//   );
+
+//   console.log('✅ Admin Booking Management routes added:');
+//   console.log('   GET /api/admin/bookings');
+//   console.log('   GET /api/admin/bookings/:id/available-providers');
+//   console.log('   POST /api/admin/bookings/:id/assign-provider');
+//   console.log('   PUT /api/admin/bookings/:id/notes');
+//   console.log('   GET /api/admin/bookings/statistics');
+//   console.log('   PATCH /api/admin/bookings/bulk-update');
+//   console.log('   POST /api/admin/bookings/:id/reassign');
+//   console.log('   GET /api/admin/bookings/:id/history');
+
+
+
+//   console.log('✅ NEW Customer Filter & Booking APIs added:');
+//   console.log('   POST /api/booking/save-filters');
+//   console.log('   GET /api/booking/booking-details/:customer_id/:service_id');
+//   console.log('   POST /api/booking/confirm-booking');
+//   console.log('   GET /api/booking/service-filters/:service_id');
+// //end
+//   console.log('✅ ALL Service Booking routes registered directly:');
+//   console.log('   GET /api/booking/services');
+//   console.log('   GET /api/booking/filters/:service_id');
+//   console.log('   POST /api/booking/create');
+//   console.log('   POST /api/booking/provider/save-service-config');
+//   console.log('   POST /api/booking/search-providers-by-filters');
+//   console.log('   GET /api/booking/provider/:provider_id/service-configs');
+//   console.log('   GET /api/booking/provider-configurations ← NEW TABLE API');
+//   console.log('   PUT /api/booking/provider-configurations/:configId ← NEW EDIT API');
+//   console.log('   GET /api/booking/provider-configurations/:configId ← NEW VIEW API');
+//   console.log('   GET /api/booking/health');
+//   console.log('   GET /api/booking/docs');
+
+// } else {
+//   console.warn('⚠️  Service Booking routes skipped - controller not found');
+// }
+// if (serviceBookingController) {
+//   console.log('Registering Service Booking routes directly...');
+
+//   const { body, param, validationResult } = require('express-validator');
+
+//   const handleValidationErrors = (req, res, next) => {
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Validation failed',
+//         errors: errors.array()
+//       });
+//     }
+//     next();
+//   };
+
+//   // Basic Service Booking Routes
+//   app.get('/api/booking/services', serviceBookingController.getAllServices);
+//   app.get('/api/booking/filters/:service_id', serviceBookingController.getServiceFilters);
+//   app.post('/api/booking/create', serviceBookingController.createBooking);
+//   app.get('/api/booking/customer/:customer_id', serviceBookingController.getCustomerBookings);
+//   app.get('/api/booking/details/:booking_id', serviceBookingController.getBookingDetails);
+//   app.patch('/api/booking/status/:booking_id', serviceBookingController.updateBookingStatus);
+//   app.patch('/api/booking/cancel/:booking_id', serviceBookingController.cancelBooking);
+//   app.get('/api/booking/provider/:service_provider_id', serviceBookingController.getServiceProviderBookings);
+//   app.get('/api/booking/search', serviceBookingController.searchBookings);
+//   app.get('/api/booking/stats', serviceBookingController.getBookingStats);
+
+//   // NEW Provider Configuration Routes
+//   //  app.post('/api/booking/provider/save-service-config',
+//   //    [
+//   ///      body('provider_id').isInt({ min: 1 }).withMessage('Valid provider ID required'),
+//   //     body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+//   //      body('service_name').isString().notEmpty().withMessage('Service name required'),
+//   //      body('base_rate').isFloat({ min: 0.01 }).withMessage('Valid base rate required'),
+//   //      body('selected_filters').isArray({ min: 1 }).withMessage('At least one filter required')
+//   //    ],
+//   //    handleValidationErrors,
+//   //    serviceBookingController.saveProviderServiceConfiguration
+//   //  );
+
+//   app.get('/api/booking/provider-configurations',
+//     serviceBookingController.getAllProviderConfigurations
+//   );
+
+//   app.put('/api/booking/provider-configurations/:configId',
+//     uploadConfigs.serviceImage,
+//     handleUploadError,
+//     serviceBookingController.updateProviderConfiguration
+//   );
+
+
+
+//   app.get('/api/booking/provider-configurations/:configId',
+//     serviceBookingController.getProviderConfigurationById
+//   );
+
+//   app.get('/api/booking/providers',
+//     serviceBookingController.getServiceProviders
+//   );
+//   //new
+
+//   app.post('/api/booking/provider/save-service-config',
+//     uploadConfigs.serviceImage,
+//     handleUploadError,
+//     serviceBookingController.saveProviderServiceConfiguration
+//   );
+
+//   app.post('/api/booking/search-providers-by-filters',
+//     [
+//       body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+//       body('customer_filters').isArray({ min: 1 }).withMessage('Customer filters required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.searchProvidersByFilters
+//   );
+
+//   app.get('/api/booking/provider/:provider_id/service-configs',
+//     [
+//       param('provider_id').isInt({ min: 1 }).withMessage('Valid provider ID required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.getProviderServiceConfigurations
+//   );
+
+//   // NEW: Toggle provider configuration status
+// app.patch('/api/booking/provider-configurations/:configId/toggle-status',
+//     serviceBookingController.toggleProviderConfigurationStatus
+// );
+
+
+//   // Utility Routes
+//   app.get('/api/booking/status-options', (req, res) => {
+//     res.json({
+//       success: true,
+//       message: 'Booking status options retrieved',
+//       data: {
+//         status_options: [
+//           { value: 'pending', label: 'Pending Confirmation', color: 'orange' },
+//           { value: 'confirmed', label: 'Confirmed', color: 'green' },
+//           { value: 'in_progress', label: 'In Progress', color: 'blue' },
+//           { value: 'completed', label: 'Completed', color: 'green' },
+//           { value: 'cancelled', label: 'Cancelled', color: 'red' }
+//         ]
+//       }
+//     });
+//   });
+
+//   app.get('/api/booking/categories', (req, res) => {
+//     res.json({
+//       success: true,
+//       message: 'Service categories retrieved',
+//       data: {
+//         categories: [
+//           { id: 1, name: 'Child Care', description: 'Baby sitting and child care services' },
+//           { id: 2, name: 'Senior Care', description: 'Elderly care and assistance services' },
+//           { id: 3, name: 'Household', description: 'Cooking and household management' },
+//           { id: 4, name: 'Maintenance', description: 'Garden and property maintenance' },
+//           { id: 5, name: 'Transportation', description: 'Driver and transportation services' },
+//           { id: 6, name: 'Cleaning', description: 'House cleaning and sanitization' },
+//           { id: 7, name: 'Pet Services', description: 'Pet care and grooming services' }
+//         ]
+//       }
+//     });
+//   });
+
+//   app.get('/api/booking/health', (req, res) => {
+//     res.json({
+//       success: true,
+//       message: 'Service Booking API is healthy',
+//       timestamp: new Date().toISOString(),
+//       version: '2.0.0'
+//     });
+//   });
+
+//   app.get('/api/booking/docs', (req, res) => {
+//     res.json({
+//       title: 'Service Booking API Documentation',
+//       version: '2.0.0',
+//       baseURL: '/api/booking',
+//       endpoints: {
+//         services: 'GET /services - Get all services',
+//         filters: 'GET /filters/:service_id - Get service filters',
+//         create: 'POST /create - Create booking',
+//         customer: 'GET /customer/:customer_id - Get customer bookings',
+//         details: 'GET /details/:booking_id - Get booking details',
+//         providerConfig: 'POST /provider/save-service-config - Save provider config',
+//         searchProviders: 'POST /search-providers-by-filters - Search providers',
+//         getConfigs: 'GET /provider/:provider_id/service-configs - Get provider configs'
+//       }
+//     });
+//   });
+
+//   //new 
+//   app.post('/api/booking/save-filters',
+//     [
+//       body('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
+//       body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+//       body('customer_name').optional().isString().withMessage('Customer name must be string')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.saveCustomerFilters
+//   );
+
+//   app.get('/api/booking/booking-details/:customer_id/:service_id',
+//     [
+//       param('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
+//       param('service_id').isInt({ min: 1 }).withMessage('Valid service ID required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.getBookingDetails
+//   );
+
+//   app.post('/api/booking/confirm-booking',
+//     [
+//       body('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
+//       body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+//       body('address').notEmpty().withMessage('Address is required'),
+//       body('start_date').isDate().withMessage('Valid start date required'),
+//       body('total_amount').isFloat({ min: 0 }).withMessage('Valid total amount required')
+//     ],
+//     handleValidationErrors,
+//     serviceBookingController.saveBooking
+//   );
+
+//   app.get('/api/booking/service-filters/:service_id',
+//     serviceBookingController.getServiceFilters
+//   );
+
+//   console.log('✅ ALL Service Booking routes registered directly:');
+//   console.log('   GET /api/booking/services');
+//   console.log('   GET /api/booking/filters/:service_id');
+//   console.log('   POST /api/booking/create');
+//   console.log('   POST /api/booking/provider/save-service-config ← NEW');
+//   console.log('   POST /api/booking/search-providers-by-filters ← NEW');
+//   console.log('   GET /api/booking/provider/:provider_id/service-configs ← NEW');
+//   console.log('   GET /api/booking/health');
+//   console.log('   GET /api/booking/docs');
+
+// } else {
+//   console.warn('⚠️  Service Booking routes skipped - controller not found');
+// }
+
 if (serviceBookingController) {
   console.log('Registering Service Booking routes directly...');
-
-  const { body, param, validationResult } = require('express-validator');
-
-  const handleValidationErrors = (req, res, next) => {
+  
+  const { body, param,query, validationResult } = require('express-validator');
+  
+ 
+   const handleValidationErrors = (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -194,42 +683,7 @@ if (serviceBookingController) {
   app.get('/api/booking/search', serviceBookingController.searchBookings);
   app.get('/api/booking/stats', serviceBookingController.getBookingStats);
 
-  // NEW Provider Configuration Routes
-  //  app.post('/api/booking/provider/save-service-config',
-  //    [
-  ///      body('provider_id').isInt({ min: 1 }).withMessage('Valid provider ID required'),
-  //     body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
-  //      body('service_name').isString().notEmpty().withMessage('Service name required'),
-  //      body('base_rate').isFloat({ min: 0.01 }).withMessage('Valid base rate required'),
-  //      body('selected_filters').isArray({ min: 1 }).withMessage('At least one filter required')
-  //    ],
-  //    handleValidationErrors,
-  //    serviceBookingController.saveProviderServiceConfiguration
-  //  );
-
-  app.get('/api/booking/provider-configurations',
-    serviceBookingController.getAllProviderConfigurations
-  );
-
-  app.put('/api/booking/provider-configurations/:configId',
-    uploadConfigs.serviceImage,
-    handleUploadError,
-    serviceBookingController.updateProviderConfiguration
-  );
-
-   app.get('/api/booking/provider-configurations/:mobile_number',
-    serviceBookingController.getProviderConfigurationsByMobile
-);
-
-  app.get('/api/booking/provider-configurations/:configId',
-    serviceBookingController.getProviderConfigurationById
-  );
-
-  app.get('/api/booking/providers',
-    serviceBookingController.getServiceProviders
-  );
-  //new
-
+  // Provider Configuration Routes
   app.post('/api/booking/provider/save-service-config',
     uploadConfigs.serviceImage,
     handleUploadError,
@@ -244,6 +698,15 @@ if (serviceBookingController) {
     handleValidationErrors,
     serviceBookingController.searchProvidersByFilters
   );
+  
+ app.get('/api/booking/providers', 
+        serviceBookingController.getServiceProviders
+    );
+
+ app.get(
+  "/api/booking/booked-users/:registration_id",
+  serviceBookingController.getBookedUsersByRegistrationId
+);
 
   app.get('/api/booking/provider/:provider_id/service-configs',
     [
@@ -253,11 +716,25 @@ if (serviceBookingController) {
     serviceBookingController.getProviderServiceConfigurations
   );
 
+  // NEW: Provider Table Management Routes
+  app.get('/api/booking/provider-configurations', 
+      serviceBookingController.getAllProviderConfigurations
+  );
+
+  app.put('/api/booking/provider-configurations/:configId',
+      uploadConfigs.serviceImage,
+      handleUploadError,
+      serviceBookingController.updateProviderConfiguration
+  );
+
+  app.get('/api/booking/provider-configurations/:configId',
+      serviceBookingController.getProviderConfigurationById
+  );
+
   // NEW: Toggle provider configuration status
 app.patch('/api/booking/provider-configurations/:configId/toggle-status',
     serviceBookingController.toggleProviderConfigurationStatus
 );
-
 
   // Utility Routes
   app.get('/api/booking/status-options', (req, res) => {
@@ -316,12 +793,240 @@ app.patch('/api/booking/provider-configurations/:configId/toggle-status',
         details: 'GET /details/:booking_id - Get booking details',
         providerConfig: 'POST /provider/save-service-config - Save provider config',
         searchProviders: 'POST /search-providers-by-filters - Search providers',
-        getConfigs: 'GET /provider/:provider_id/service-configs - Get provider configs'
+        getConfigs: 'GET /provider/:provider_id/service-configs - Get provider configs',
+        // NEW TABLE APIS
+        tableConfigs: 'GET /provider-configurations - Get all for table',
+        editConfig: 'PUT /provider-configurations/:id - Update config', 
+        viewConfig: 'GET /provider-configurations/:id - View single config'
       }
     });
   });
+//new 
+   app.post('/api/booking/save-filters',
+    [
+      body('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
+      body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+      body('customer_name').optional().isString().withMessage('Customer name must be string')
+    ],
+    handleValidationErrors,
+    serviceBookingController.saveCustomerFilters
+  );
 
-  //new 
+  app.get('/api/booking/booking-details/:customer_id/:service_id',
+    [
+      param('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
+      param('service_id').isInt({ min: 1 }).withMessage('Valid service ID required')
+    ],
+    handleValidationErrors,
+    serviceBookingController.getBookingDetails
+  );
+
+  app.post('/api/booking/confirm-booking',
+    [
+      body('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
+      body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+      body('address').notEmpty().withMessage('Address is required'),
+      body('start_date').isDate().withMessage('Valid start date required'),
+      body('total_amount').isFloat({ min: 0 }).withMessage('Valid total amount required')
+    ],
+    handleValidationErrors,
+    serviceBookingController.saveBooking
+  );
+
+  app.get('/api/booking/service-filters/:service_id',
+    serviceBookingController.getServiceFilters
+  );
+
+  // NEW: Admin Booking Management Routes
+  app.get('/api/admin/bookings', 
+    [
+      query('status').optional().isIn(['all', 'confirmed', 'assigned', 'in_progress', 'completed', 'cancelled']),
+      query('service').optional().isIn(['all', '1', '2', '3', '4', '5']),
+      query('from_date').optional().isDate(),
+      query('to_date').optional().isDate(),
+      query('page').optional().isInt({ min: 1 }),
+      query('limit').optional().isInt({ min: 1, max: 50 })
+    ],
+    handleValidationErrors,
+    serviceBookingController.getAdminBookings
+  );
+
+  app.get('/api/admin/bookings/:booking_id/available-providers',
+    [
+      param('booking_id').notEmpty().withMessage('Booking ID is required')
+    ],
+    handleValidationErrors,
+    serviceBookingController.getAvailableProviders
+  );
+
+  app.post('/api/admin/bookings/:booking_id/assign-provider',
+    [
+      param('booking_id').notEmpty().withMessage('Booking ID is required'),
+      body('provider_id').isInt({ min: 1 }).withMessage('Valid provider ID is required'),
+      body('estimated_cost').optional().isFloat({ min: 0 }).withMessage('Estimated cost must be positive'),
+      body('assignment_notes').optional().isString().isLength({ max: 1000 }).withMessage('Notes too long')
+    ],
+    handleValidationErrors,
+    serviceBookingController.assignProvider
+  );
+
+  app.put('/api/admin/bookings/:booking_id/notes',
+    [
+      param('booking_id').notEmpty().withMessage('Booking ID is required'),
+      body('notes').isString().isLength({ max: 2000 }).withMessage('Notes too long')
+    ],
+    handleValidationErrors,
+    serviceBookingController.updateBookingNotes
+  );
+
+  app.get('/api/admin/bookings/statistics',
+    serviceBookingController.getAdminBookingStatistics
+  );
+
+  app.patch('/api/admin/bookings/bulk-update',
+    [
+      body('booking_ids').isArray({ min: 1 }).withMessage('At least one booking ID required'),
+      body('status').isIn(['confirmed', 'assigned', 'in_progress', 'completed', 'cancelled']),
+      body('notes').optional().isString()
+    ],
+    handleValidationErrors,
+    serviceBookingController.bulkUpdateBookings
+  );
+
+  app.post('/api/admin/bookings/:booking_id/reassign',
+    [
+      param('booking_id').notEmpty().withMessage('Booking ID is required'),
+      body('new_provider_id').isInt({ min: 1 }).withMessage('Valid provider ID required'),
+      body('reason').isString().notEmpty().withMessage('Reason is required')
+    ],
+    handleValidationErrors,
+    serviceBookingController.reassignProvider
+  );
+
+  app.get('/api/admin/bookings/:booking_id/history',
+    serviceBookingController.getAssignmentHistory
+  );
+
+  console.log('✅ Admin Booking Management routes added:');
+  console.log('   GET /api/admin/bookings');
+  console.log('   GET /api/admin/bookings/:id/available-providers');
+  console.log('   POST /api/admin/bookings/:id/assign-provider');
+  console.log('   PUT /api/admin/bookings/:id/notes');
+  console.log('   GET /api/admin/bookings/statistics');
+  console.log('   PATCH /api/admin/bookings/bulk-update');
+  console.log('   POST /api/admin/bookings/:id/reassign');
+  console.log('   GET /api/admin/bookings/:id/history');
+
+
+
+  console.log('✅ NEW Customer Filter & Booking APIs added:');
+  console.log('   POST /api/booking/save-filters');
+  console.log('   GET /api/booking/booking-details/:customer_id/:service_id');
+  console.log('   POST /api/booking/confirm-booking');
+  console.log('   GET /api/booking/service-filters/:service_id');
+//end
+  console.log('✅ ALL Service Booking routes registered directly:');
+  console.log('   GET /api/booking/services');
+  console.log('   GET /api/booking/filters/:service_id');
+  console.log('   POST /api/booking/create');
+  console.log('   POST /api/booking/provider/save-service-config');
+  console.log('   POST /api/booking/search-providers-by-filters');
+  console.log('   GET /api/booking/provider/:provider_id/service-configs');
+  console.log('   GET /api/booking/provider-configurations ← NEW TABLE API');
+  console.log('   PUT /api/booking/provider-configurations/:configId ← NEW EDIT API');
+  console.log('   GET /api/booking/provider-configurations/:configId ← NEW VIEW API');
+  console.log('   GET /api/booking/health');
+  console.log('   GET /api/booking/docs');
+
+} else {
+  console.warn('⚠️  Service Booking routes skipped - controller not found');
+}
+if (serviceBookingController) {
+  console.log('Registering Service Booking routes directly...');
+  
+  const { body, param, query, validationResult } = require('express-validator');
+  
+  const handleValidationErrors = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+    next();
+  };
+
+  // ==========================================
+  // BASIC SERVICE BOOKING ROUTES
+  // ==========================================
+  app.get('/api/booking/services', serviceBookingController.getAllServices);
+  app.get('/api/booking/filters/:service_id', serviceBookingController.getServiceFilters);
+  app.post('/api/booking/create', serviceBookingController.createBooking);
+  app.get('/api/booking/customer/:customer_id', serviceBookingController.getCustomerBookings);
+  app.get('/api/booking/details/:booking_id', serviceBookingController.getBookingDetails);
+  app.patch('/api/booking/status/:booking_id', serviceBookingController.updateBookingStatus);
+  app.patch('/api/booking/cancel/:booking_id', serviceBookingController.cancelBooking);
+  app.get('/api/booking/provider/:service_provider_id', serviceBookingController.getServiceProviderBookings);
+  app.get('/api/booking/search', serviceBookingController.searchBookings);
+  app.get('/api/booking/stats', serviceBookingController.getBookingStats);
+
+  // ==========================================
+  // PROVIDER CONFIGURATION ROUTES
+  // ==========================================
+  app.post('/api/booking/provider/save-service-config',
+    uploadConfigs.serviceImage,
+    handleUploadError,
+    serviceBookingController.saveProviderServiceConfiguration
+  );
+
+  app.post('/api/booking/search-providers-by-filters',
+    [
+      body('service_id').isInt({ min: 1 }).withMessage('Valid service ID required'),
+      body('customer_filters').isArray({ min: 1 }).withMessage('Customer filters required')
+    ],
+    handleValidationErrors,
+    serviceBookingController.searchProvidersByFilters
+  );
+  
+  app.get('/api/booking/providers', 
+    serviceBookingController.getServiceProviders
+  );
+
+  app.get('/api/booking/provider/:provider_id/service-configs',
+    [
+      param('provider_id').isInt({ min: 1 }).withMessage('Valid provider ID required')
+    ],
+    handleValidationErrors,
+    serviceBookingController.getProviderServiceConfigurations
+  );
+
+  app.get('/api/booking/provider-configurations', 
+    serviceBookingController.getAllProviderConfigurations
+  );
+
+     app.get('/api/booking/provider-configurations/:mobile_number',
+    serviceBookingController.getProviderConfigurationsByMobile
+);
+
+  app.put('/api/booking/provider-configurations/:configId',
+    uploadConfigs.serviceImage,
+    handleUploadError,
+    serviceBookingController.updateProviderConfiguration
+  );
+
+  app.get('/api/booking/provider-configurations/:configId',
+    serviceBookingController.getProviderConfigurationById
+  );
+
+  app.patch('/api/booking/provider-configurations/:configId/toggle-status',
+    serviceBookingController.toggleProviderConfigurationStatus
+  );
+
+  // ==========================================
+  // CUSTOMER FILTER & BOOKING ROUTES
+  // ==========================================
   app.post('/api/booking/save-filters',
     [
       body('customer_id').isInt({ min: 1 }).withMessage('Valid customer ID required'),
@@ -357,19 +1062,198 @@ app.patch('/api/booking/provider-configurations/:configId/toggle-status',
     serviceBookingController.getServiceFilters
   );
 
-  console.log('✅ ALL Service Booking routes registered directly:');
+  // ==========================================
+  // ADMIN BOOKING MANAGEMENT ROUTES ⭐ CRITICAL
+  // ==========================================
+  console.log('Registering ADMIN routes...');
+  
+  app.get('/api/booking/admin/bookings', 
+    [
+      query('status').optional().isIn(['all', 'confirmed', 'assigned', 'in_progress', 'completed', 'cancelled']),
+      query('service_id').optional().isIn(['all', '1', '2', '3', '4', '5']),
+      query('search').optional().isString(),
+      query('date_from').optional().isDate(),
+      query('date_to').optional().isDate(),
+      query('page').optional().isInt({ min: 1 }),
+      query('limit').optional().isInt({ min: 1, max: 50 })
+    ],
+    handleValidationErrors,
+    serviceBookingController.getAdminBookings
+  );
+
+  app.get('/api/booking/admin/bookings/:booking_id/available-providers',
+    [
+      param('booking_id').notEmpty().withMessage('Booking ID is required')
+    ],
+    handleValidationErrors,
+    serviceBookingController.getAvailableProviders
+  );
+
+  app.post('/api/booking/admin/bookings/:booking_id/assign-provider',
+    [
+      param('booking_id').notEmpty().withMessage('Booking ID is required'),
+      body('provider_id').isInt({ min: 1 }).withMessage('Valid provider ID is required'),
+      body('estimated_cost').optional().isFloat({ min: 0 }).withMessage('Estimated cost must be positive'),
+      body('assignment_notes').optional().isString().isLength({ max: 1000 }).withMessage('Notes too long')
+    ],
+    handleValidationErrors,
+    serviceBookingController.assignProvider
+  );
+
+  app.put('/api/booking/admin/bookings/:booking_id/notes',
+    [
+      param('booking_id').notEmpty().withMessage('Booking ID is required'),
+      body('notes').isString().isLength({ max: 2000 }).withMessage('Notes too long')
+    ],
+    handleValidationErrors,
+    serviceBookingController.updateBookingNotes
+  );
+
+  app.get('/api/booking/admin/bookings/:booking_id/details',
+    [
+      param('booking_id').notEmpty().withMessage('Booking ID is required')
+    ],
+    handleValidationErrors,
+    serviceBookingController.getBookingDetails
+  );
+
+  app.get('/api/booking/admin/bookings/statistics',
+    serviceBookingController.getAdminBookingStatistics
+  );
+
+  app.patch('/api/booking/admin/bookings/bulk-update',
+    [
+      body('booking_ids').isArray({ min: 1 }).withMessage('At least one booking ID required'),
+      body('status').isIn(['confirmed', 'assigned', 'in_progress', 'completed', 'cancelled']),
+      body('notes').optional().isString()
+    ],
+    handleValidationErrors,
+    serviceBookingController.bulkUpdateBookings
+  );
+
+  app.post('/api/booking/admin/bookings/:booking_id/reassign',
+    [
+      param('booking_id').notEmpty().withMessage('Booking ID is required'),
+      body('new_provider_id').isInt({ min: 1 }).withMessage('Valid provider ID required'),
+      body('reason').isString().notEmpty().withMessage('Reason is required')
+    ],
+    handleValidationErrors,
+    serviceBookingController.reassignProvider
+  );
+
+  app.get('/api/booking/admin/bookings/:booking_id/history',
+    serviceBookingController.getAssignmentHistory
+  );
+
+  // ==========================================
+  // UTILITY ROUTES
+  // ==========================================
+  app.get('/api/booking/status-options', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Booking status options retrieved',
+      data: {
+        status_options: [
+          { value: 'pending', label: 'Pending Confirmation', color: 'orange' },
+          { value: 'confirmed', label: 'Confirmed', color: 'green' },
+          { value: 'in_progress', label: 'In Progress', color: 'blue' },
+          { value: 'completed', label: 'Completed', color: 'green' },
+          { value: 'cancelled', label: 'Cancelled', color: 'red' }
+        ]
+      }
+    });
+  });
+
+  app.get('/api/booking/categories', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Service categories retrieved',
+      data: {
+        categories: [
+          { id: 1, name: 'Child Care', description: 'Baby sitting and child care services' },
+          { id: 2, name: 'Senior Care', description: 'Elderly care and assistance services' },
+          { id: 3, name: 'Household', description: 'Cooking and household management' },
+          { id: 4, name: 'Maintenance', description: 'Garden and property maintenance' },
+          { id: 5, name: 'Transportation', description: 'Driver and transportation services' },
+          { id: 6, name: 'Cleaning', description: 'House cleaning and sanitization' },
+          { id: 7, name: 'Pet Services', description: 'Pet care and grooming services' }
+        ]
+      }
+    });
+  });
+
+  app.get('/api/booking/health', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Service Booking API is healthy',
+      timestamp: new Date().toISOString(),
+      version: '2.0.0'
+    });
+  });
+
+  app.get('/api/booking/docs', (req, res) => {
+    res.json({
+      title: 'Service Booking API Documentation',
+      version: '2.0.0',
+      baseURL: '/api/booking',
+      endpoints: {
+        services: 'GET /services - Get all services',
+        filters: 'GET /filters/:service_id - Get service filters',
+        create: 'POST /create - Create booking',
+        customer: 'GET /customer/:customer_id - Get customer bookings',
+        details: 'GET /details/:booking_id - Get booking details',
+        providerConfig: 'POST /provider/save-service-config - Save provider config',
+        searchProviders: 'POST /search-providers-by-filters - Search providers',
+        getConfigs: 'GET /provider/:provider_id/service-configs - Get provider configs',
+        tableConfigs: 'GET /provider-configurations - Get all for table',
+        editConfig: 'PUT /provider-configurations/:id - Update config', 
+        viewConfig: 'GET /provider-configurations/:id - View single config',
+        // ADMIN ENDPOINTS
+        adminBookings: 'GET /admin/bookings - Get all bookings',
+        availableProviders: 'GET /admin/bookings/:id/available-providers',
+        assignProvider: 'POST /admin/bookings/:id/assign-provider',
+        updateNotes: 'PUT /admin/bookings/:id/notes'
+      }
+    });
+  });
+
+  // ==========================================
+  // LOG ALL REGISTERED ROUTES
+  // ==========================================
+  console.log('✅ ALL Service Booking routes registered:');
   console.log('   GET /api/booking/services');
   console.log('   GET /api/booking/filters/:service_id');
   console.log('   POST /api/booking/create');
-  console.log('   POST /api/booking/provider/save-service-config ← NEW');
-  console.log('   POST /api/booking/search-providers-by-filters ← NEW');
-  console.log('   GET /api/booking/provider/:provider_id/service-configs ← NEW');
+  console.log('   POST /api/booking/provider/save-service-config');
+  console.log('   POST /api/booking/search-providers-by-filters');
+  console.log('   GET /api/booking/provider/:provider_id/service-configs');
+  console.log('   GET /api/booking/provider-configurations');
+  console.log('   PUT /api/booking/provider-configurations/:configId');
+  console.log('   GET /api/booking/provider-configurations/:configId');
+  console.log('   PATCH /api/booking/provider-configurations/:configId/toggle-status');
+  console.log('   POST /api/booking/save-filters');
+  console.log('   GET /api/booking/booking-details/:customer_id/:service_id');
+  console.log('   POST /api/booking/confirm-booking');
+  console.log('   GET /api/booking/service-filters/:service_id');
+  console.log('');
+  console.log('✅ ADMIN Booking Management routes:');
+  console.log('   GET /api/booking/admin/bookings ⭐');
+  console.log('   GET /api/booking/admin/bookings/:id/available-providers ⭐');
+  console.log('   POST /api/booking/admin/bookings/:id/assign-provider ⭐');
+  console.log('   PUT /api/booking/admin/bookings/:id/notes ⭐');
+  console.log('   GET /api/booking/admin/bookings/:id/details ⭐');
+  console.log('   GET /api/booking/admin/bookings/statistics');
+  console.log('   PATCH /api/booking/admin/bookings/bulk-update');
+  console.log('   POST /api/booking/admin/bookings/:id/reassign');
+  console.log('   GET /api/booking/admin/bookings/:id/history');
+  console.log('');
   console.log('   GET /api/booking/health');
   console.log('   GET /api/booking/docs');
 
 } else {
   console.warn('⚠️  Service Booking routes skipped - controller not found');
 }
+
 
 
 // 4. ADD DIRECT REGISTRATION ROUTES (after existing route registrations)
