@@ -1080,7 +1080,7 @@ WHERE ur.registration_id = ?;
 // LEFT JOIN crm_users cu ON cu.id = ur.crm_id
 // WHERE ai.mobile_number = ?;
 // `;
-
+// ✅ Get User By Mobile Number
 const getUserByMobileNumber = `
 SELECT 
     ur.registration_id,
@@ -1090,19 +1090,89 @@ SELECT
     DATE_FORMAT(pi.date_of_birth, '%Y-%m-%d') AS date_of_birth,
     pi.gender_id,
     g.gender_name,
+    n.nationality_name,
+    pi.languages_known,
+    ipt.proof_type_name,
+    pi.id_proof_number,
+    pi.profile_photo,
+    pi.id_proof_document,
     cad.current_address,
-    cad.city AS city_id,
+    cad.permanent_address,
+
+    -- ✅ Fix: always return numeric city_id if exists
+    COALESCE(c.city_id, cad.city) AS city_id,
     COALESCE(c.city_name, cad.city) AS city_name,
+
     cad.state_id,
     s.state_name,
-    cad.pincode
+    cad.pincode,
+    cad.current_latitude,
+    cad.current_longitude,
+    cad.permanent_latitude,
+    cad.permanent_longitude,
+    pl.location_name AS preferred_work_location,
+    st.name AS service_name,
+    wt.work_type_name,
+    si.years_of_experience,
+    si.expected_salary,
+    si.service_image,
+
+    -- Available Days
+    COALESCE((
+        SELECT JSON_ARRAYAGG(ad.day_name)
+        FROM available_days ad
+        WHERE si.available_day_ids IS NOT NULL
+          AND JSON_CONTAINS(si.available_day_ids, CAST(ad.day_id AS JSON), '$')
+    ), JSON_ARRAY()) AS available_days,
+
+    -- Time Slots
+    COALESCE((
+        SELECT JSON_ARRAYAGG(ts.slot_name)
+        FROM time_slots ts
+        WHERE si.time_slot_ids IS NOT NULL
+          AND JSON_CONTAINS(si.time_slot_ids, CAST(ts.slot_id AS JSON), '$')
+    ), JSON_ARRAY()) AS time_slots,
+
+    brc.police_verification_done,
+    brc.police_verification_status,
+    brc.police_verification_document,
+    brc.reference1_name,
+    brc.reference1_contact,
+    COALESCE(r1.relationship_name, 'Not Provided') AS reference1_relation,
+    brc.reference2_name,
+    brc.reference2_contact,
+    COALESCE(r2.relationship_name, 'Not Provided') AS reference2_relation,
+    du.resume_bio_data,
+    du.driving_license,
+    du.experience_certificates,
+    ai.bank_account_holder_name,
+    ai.account_number,
+    ai.ifsc_code,
+    ai.cancelled_cheque_passbook,
+    cu.name AS handle_by,
+    CASE WHEN ur.registration_status = 'active' THEN 'active' ELSE 'inactive' END AS status
+
 FROM user_registrations ur
 JOIN account_information ai ON ai.registration_id = ur.registration_id
 LEFT JOIN personal_information pi ON pi.registration_id = ur.registration_id
 LEFT JOIN genders g ON g.gender_id = pi.gender_id
+LEFT JOIN nationalities n ON n.nationality_id = pi.nationality_id
+LEFT JOIN id_proof_types ipt ON ipt.id_proof_type_id = pi.id_proof_type_id
 LEFT JOIN contact_address_details cad ON cad.registration_id = ur.registration_id
+
+-- ✅ Allow join whether cad.city is numeric id or name
 LEFT JOIN cities c ON (c.city_id = cad.city OR c.city_name = cad.city)
+
 LEFT JOIN states s ON s.state_id = cad.state_id
+LEFT JOIN preferred_locations pl ON pl.location_id = cad.preferred_location_id
+LEFT JOIN service_information si ON si.registration_id = ur.registration_id
+LEFT JOIN service_types st ON st.service_id = si.service_type_id
+LEFT JOIN work_types wt ON wt.work_type_id = si.work_type_id
+LEFT JOIN background_reference_check brc ON brc.registration_id = ur.registration_id
+LEFT JOIN relationship_types r1 ON r1.relationship_id = brc.reference1_relationship_id
+LEFT JOIN relationship_types r2 ON r2.relationship_id = brc.reference2_relationship_id
+LEFT JOIN document_uploads du ON du.registration_id = ur.registration_id
+LEFT JOIN crm_users cu ON cu.id = ur.crm_id
 WHERE ai.mobile_number = ?;
 `;
 
@@ -1127,6 +1197,7 @@ const updateUserProfile = `
       pincode = ?
   WHERE registration_id = ?;
 `;
+
 const getRegistrationIdByMobile = `
   SELECT registration_id FROM account_information WHERE mobile_number = ? LIMIT 1;
 `;
