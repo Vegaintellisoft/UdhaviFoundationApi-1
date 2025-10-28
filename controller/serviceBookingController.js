@@ -2552,188 +2552,365 @@ try {
 // 1. GET ALL BOOKINGS FOR ADMIN GRID
 // Fixed getAdminBookings method for ServiceBookingController
 
-static async getAdminBookings(req, res) {
-    try {
-        // Extract query parameters
-        const status = req.query.status;
-        const service_id = req.query.service_id;
-        const search = req.query.search;
-        const date_from = req.query.date_from;
-        const date_to = req.query.date_to;
+// static async getAdminBookings(req, res) {
+//     try {
+//         // Extract query parameters
+//         const status = req.query.status;
+//         const service_id = req.query.service_id;
+//         const search = req.query.search;
+//         const date_from = req.query.date_from;
+//         const date_to = req.query.date_to;
 
-        console.log('Query parameters:', {
-            status,
-            service_id,
-            search,
-            date_from,
-            date_to
-        });
+//         console.log('Query parameters:', {
+//             status,
+//             service_id,
+//             search,
+//             date_from,
+//             date_to
+//         });
 
-        // Build WHERE conditions and parameters array
-        let whereConditions = ['1=1'];
-        let queryParams = [];
+//         // Build WHERE conditions and parameters array
+//         let whereConditions = ['1=1'];
+//         let queryParams = [];
 
-        if (status && status !== 'all') {
-            whereConditions.push('sb.booking_status = ?');
-            queryParams.push(status);
-        }
+//         if (status && status !== 'all') {
+//             whereConditions.push('sb.booking_status = ?');
+//             queryParams.push(status);
+//         }
 
-        if (service_id) {
-            whereConditions.push('sb.service_id = ?');
-            queryParams.push(parseInt(service_id));
-        }
+//         if (service_id) {
+//             whereConditions.push('sb.service_id = ?');
+//             queryParams.push(parseInt(service_id));
+//         }
 
-        if (search) {
-            whereConditions.push('(tc.name LIKE ? OR tc.mobile LIKE ? OR sb.booking_id LIKE ?)');
-            const searchPattern = `%${search}%`;
-            queryParams.push(searchPattern, searchPattern, searchPattern);
-        }
+//         if (search) {
+//             whereConditions.push('(tc.name LIKE ? OR tc.mobile LIKE ? OR sb.booking_id LIKE ?)');
+//             const searchPattern = `%${search}%`;
+//             queryParams.push(searchPattern, searchPattern, searchPattern);
+//         }
 
-        if (date_from) {
-            whereConditions.push('DATE(sb.created_at) >= ?');
-            queryParams.push(date_from);
-        }
+//         if (date_from) {
+//             whereConditions.push('DATE(sb.created_at) >= ?');
+//             queryParams.push(date_from);
+//         }
 
-        if (date_to) {
-            whereConditions.push('DATE(sb.created_at) <= ?');
-            queryParams.push(date_to);
-        }
+//         if (date_to) {
+//             whereConditions.push('DATE(sb.created_at) <= ?');
+//             queryParams.push(date_to);
+//         }
 
-        const whereClause = whereConditions.join(' AND ');
+//         const whereClause = whereConditions.join(' AND ');
 
-        console.log('Final WHERE clause:', whereClause);
-        console.log('Query parameters:', queryParams);
+//         console.log('Final WHERE clause:', whereClause);
+//         console.log('Query parameters:', queryParams);
 
-        // Main query - NO PAGINATION
-        const query = `
-            SELECT 
-                sb.id,
-                sb.booking_id,
-                sb.created_at,
-                sb.service_start_date,
-                sb.service_start_time,
-                sb.service_end_time,
-                sb.booking_status,
-                sb.total_amount,
-                sb.customer_filters,
-                sb.remarks,
-                sb.assigned_provider_id,
-                sb.estimated_cost,
+//         // Main query - NO PAGINATION
+//         const query = `
+//             SELECT 
+//                 sb.id,
+//                 sb.booking_id,
+//                 sb.created_at,
+//                 sb.service_start_date,
+//                 sb.service_start_time,
+//                 sb.service_end_time,
+//                 sb.booking_status,
+//                 sb.total_amount,
+//                 sb.customer_filters,
+//                 sb.remarks,
+//                 sb.assigned_provider_id,
+//                 sb.estimated_cost,
                 
-                -- Service details
-                st.name as service_name,
-                st.base_price,
+//                 -- Service details
+//                 st.name as service_name,
+//                 st.base_price,
                 
-                -- Customer details  
-                tc.name as customer_name,
-                tc.mobile as customer_mobile,
-                tc.email as customer_email,
-                sb.service_address,
+//                 -- Customer details  
+//                 tc.name as customer_name,
+//                 tc.mobile as customer_mobile,
+//                 tc.email as customer_email,
+//                 sb.service_address,
                 
-                -- Assigned provider details
-                ai.full_name as provider_name,
-                ai.mobile_number as provider_mobile,
+//                 -- Assigned provider details
+//                 ai.full_name as provider_name,
+//                 ai.mobile_number as provider_mobile,
                 
-                -- Calculate service duration
-                CASE 
-                    WHEN sb.service_start_time IS NOT NULL AND sb.service_end_time IS NOT NULL
-                    THEN TIMESTAMPDIFF(HOUR, 
-                        CONCAT('2000-01-01 ', sb.service_start_time), 
-                        CONCAT('2000-01-01 ', sb.service_end_time)
-                    )
-                    ELSE NULL
-                END as service_hours
+//                 -- Calculate service duration
+//                 CASE 
+//                     WHEN sb.service_start_time IS NOT NULL AND sb.service_end_time IS NOT NULL
+//                     THEN TIMESTAMPDIFF(HOUR, 
+//                         CONCAT('2000-01-01 ', sb.service_start_time), 
+//                         CONCAT('2000-01-01 ', sb.service_end_time)
+//                     )
+//                     ELSE NULL
+//                 END as service_hours
                 
-            FROM service_bookings sb
-            LEFT JOIN service_types st ON sb.service_id = st.service_id
-            LEFT JOIN temp_customers tc ON sb.customer_id = tc.id  
-            LEFT JOIN account_information ai ON sb.assigned_provider_id = ai.registration_id
-            WHERE ${whereClause}
-            ORDER BY sb.created_at DESC
-        `;
+//             FROM service_bookings sb
+//             LEFT JOIN service_types st ON sb.service_id = st.service_id
+//             LEFT JOIN temp_customers tc ON sb.customer_id = tc.id  
+//             LEFT JOIN account_information ai ON sb.assigned_provider_id = ai.registration_id
+//             WHERE ${whereClause}
+//             ORDER BY sb.created_at DESC
+//         `;
 
-        console.log('Executing query with', queryParams.length, 'parameters');
+//         console.log('Executing query with', queryParams.length, 'parameters');
 
-        const [bookings] = await db.execute(query, queryParams);
+//         const [bookings] = await db.execute(query, queryParams);
 
-        // Process bookings data
-        const processedBookings = bookings.map(booking => {
-            let parsedFilters = {};
+//         // Process bookings data
+//         const processedBookings = bookings.map(booking => {
+//             let parsedFilters = {};
             
-            // Parse customer_filters JSON
-            if (booking.customer_filters) {
-                try {
-                    parsedFilters = typeof booking.customer_filters === 'string' 
-                        ? JSON.parse(booking.customer_filters)
-                        : booking.customer_filters;
-                } catch (error) {
-                    console.error('Error parsing customer_filters for booking:', booking.booking_id, error);
-                    parsedFilters = {};
-                }
-            }
+//             // Parse customer_filters JSON
+//             if (booking.customer_filters) {
+//                 try {
+//                     parsedFilters = typeof booking.customer_filters === 'string' 
+//                         ? JSON.parse(booking.customer_filters)
+//                         : booking.customer_filters;
+//                 } catch (error) {
+//                     console.error('Error parsing customer_filters for booking:', booking.booking_id, error);
+//                     parsedFilters = {};
+//                 }
+//             }
 
-            return {
-                id: booking.id,
-                booking_id: booking.booking_id,
-                created_at: booking.created_at,
-                service_start_date: booking.service_start_date,
-                service_start_time: booking.service_start_time,
-                service_end_time: booking.service_end_time,
-                service_hours: booking.service_hours,
-                booking_status: booking.booking_status,
-                total_amount: parseFloat(booking.total_amount || 0),
-                estimated_cost: parseFloat(booking.estimated_cost || 0),
-                remarks: booking.remarks,
+//             return {
+//                 id: booking.id,
+//                 booking_id: booking.booking_id,
+//                 created_at: booking.created_at,
+//                 service_start_date: booking.service_start_date,
+//                 service_start_time: booking.service_start_time,
+//                 service_end_time: booking.service_end_time,
+//                 service_hours: booking.service_hours,
+//                 booking_status: booking.booking_status,
+//                 total_amount: parseFloat(booking.total_amount || 0),
+//                 estimated_cost: parseFloat(booking.estimated_cost || 0),
+//                 remarks: booking.remarks,
                 
-                service_details: {
-                    name: booking.service_name,
-                    base_price: parseFloat(booking.base_price || 0)
-                },
+//                 service_details: {
+//                     name: booking.service_name,
+//                     base_price: parseFloat(booking.base_price || 0)
+//                 },
                 
-                customer_details: {
-                    name: booking.customer_name,
-                    mobile: booking.customer_mobile,
-                    email: booking.customer_email,
-                    address: booking.service_address
-                },
+//                 customer_details: {
+//                     name: booking.customer_name,
+//                     mobile: booking.customer_mobile,
+//                     email: booking.customer_email,
+//                     address: booking.service_address
+//                 },
                 
-                provider_details: booking.assigned_provider_id ? {
-                    id: booking.assigned_provider_id,
-                    name: booking.provider_name,
-                    mobile: booking.provider_mobile
-                } : null,
+//                 provider_details: booking.assigned_provider_id ? {
+//                     id: booking.assigned_provider_id,
+//                     name: booking.provider_name,
+//                     mobile: booking.provider_mobile
+//                 } : null,
                 
-                selected_filters: parsedFilters
-            };
-        });
+//                 selected_filters: parsedFilters
+//             };
+//         });
 
-        // Response - NO PAGINATION
-        res.json({
-            success: true,
-            message: `Retrieved ${processedBookings.length} bookings`,
-            data: {
-                bookings: processedBookings,
-                total_count: processedBookings.length,
-                filters_applied: {
-                    status: status || 'all',
-                    service_id: service_id || 'all',
-                    search: search || null,
-                    date_range: {
-                        from: date_from || null,
-                        to: date_to || null
-                    }
-                }
-            }
-        });
+//         // Response - NO PAGINATION
+//         res.json({
+//             success: true,
+//             message: `Retrieved ${processedBookings.length} bookings`,
+//             data: {
+//                 bookings: processedBookings,
+//                 total_count: processedBookings.length,
+//                 filters_applied: {
+//                     status: status || 'all',
+//                     service_id: service_id || 'all',
+//                     search: search || null,
+//                     date_range: {
+//                         from: date_from || null,
+//                         to: date_to || null
+//                     }
+//                 }
+//             }
+//         });
 
-    } catch (error) {
-        console.error('Get admin bookings error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to retrieve bookings',
-            error: error.message
-        });
+//     } catch (error) {
+//         console.error('Get admin bookings error:', error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Failed to retrieve bookings',
+//             error: error.message
+//         });
+//     }
+// }
+static async getAdminBookings(req, res) {
+  try {
+    const { status, service_id, search, date_from, date_to } = req.query;
+
+    console.log("Query parameters:", { status, service_id, search, date_from, date_to });
+
+    const whereConditions = ["1=1"];
+    const queryParams = [];
+
+    if (status && status !== "all") {
+      whereConditions.push("sb.booking_status = ?");
+      queryParams.push(status);
     }
+
+    if (service_id) {
+      whereConditions.push("sb.service_id = ?");
+      queryParams.push(parseInt(service_id));
+    }
+
+    if (search) {
+      whereConditions.push("(tc.name LIKE ? OR tc.mobile LIKE ? OR sb.booking_id LIKE ?)");
+      const searchPattern = `%${search}%`;
+      queryParams.push(searchPattern, searchPattern, searchPattern);
+    }
+
+    if (date_from) {
+      whereConditions.push("DATE(sb.created_at) >= ?");
+      queryParams.push(date_from);
+    }
+
+    if (date_to) {
+      whereConditions.push("DATE(sb.created_at) <= ?");
+      queryParams.push(date_to);
+    }
+
+    const whereClause = whereConditions.join(" AND ");
+
+    const query = `
+      SELECT 
+        sb.id,
+        sb.booking_id,
+        sb.created_at,
+        sb.service_start_date,
+        sb.service_start_time,
+        sb.service_end_time,
+        sb.booking_status,
+        sb.total_amount,
+        sb.customer_filters,
+        sb.remarks,
+        sb.assigned_provider_id,
+        sb.assigned_crm_id,
+        sb.interview_status,
+        sb.interview_date,
+        sb.interview_time,
+        sb.estimated_cost,
+        sb.service_address,
+
+        -- Service details
+        st.name AS service_name,
+        st.base_price,
+
+        -- Customer details  
+        tc.name AS customer_name,
+        tc.mobile AS customer_mobile,
+        tc.email AS customer_email,
+
+        -- Provider details
+        ai.full_name AS provider_name,
+        ai.mobile_number AS provider_mobile,
+
+        -- CRM user details (✅ uses correct fields)
+        cu.name AS crm_user_name,
+        cu.email AS crm_user_email,
+        cu.phone AS crm_user_phone
+
+      FROM service_bookings sb
+      LEFT JOIN service_types st ON sb.service_id = st.service_id
+      LEFT JOIN temp_customers tc ON sb.customer_id = tc.id  
+      LEFT JOIN account_information ai ON sb.assigned_provider_id = ai.registration_id
+      LEFT JOIN crm_users cu ON sb.assigned_crm_id = cu.id
+      WHERE ${whereClause}
+      ORDER BY sb.created_at DESC
+    `;
+
+    const [bookings] = await db.execute(query, queryParams);
+
+    const processedBookings = bookings.map((booking) => {
+      let parsedFilters = {};
+      if (booking.customer_filters) {
+        try {
+          parsedFilters =
+            typeof booking.customer_filters === "string"
+              ? JSON.parse(booking.customer_filters)
+              : booking.customer_filters;
+        } catch (error) {
+          console.error("Error parsing customer_filters for booking:", booking.booking_id, error);
+          parsedFilters = {};
+        }
+      }
+
+      return {
+        id: booking.id,
+        booking_id: booking.booking_id,
+        created_at: booking.created_at,
+        service_start_date: booking.service_start_date,
+        service_start_time: booking.service_start_time,
+        service_end_time: booking.service_end_time,
+        booking_status: booking.booking_status,
+        total_amount: parseFloat(booking.total_amount || 0),
+        estimated_cost: parseFloat(booking.estimated_cost || 0),
+        remarks: booking.remarks,
+
+        service_details: {
+          name: booking.service_name,
+          base_price: parseFloat(booking.base_price || 0),
+        },
+
+        customer_details: {
+          name: booking.customer_name,
+          mobile: booking.customer_mobile,
+          email: booking.customer_email,
+          address: booking.service_address,
+        },
+
+        provider_details: booking.assigned_provider_id
+          ? {
+              id: booking.assigned_provider_id,
+              name: booking.provider_name,
+              mobile: booking.provider_mobile,
+            }
+          : null,
+
+        crm_details: booking.assigned_crm_id
+          ? {
+              crm_user_id: booking.assigned_crm_id,
+              crm_user_name: booking.crm_user_name,
+              crm_user_email: booking.crm_user_email,
+              crm_user_phone: booking.crm_user_phone,
+            }
+          : null,
+
+        interview_details: {
+          interview_status: booking.interview_status,
+          interview_date: booking.interview_date,
+          interview_time: booking.interview_time,
+        },
+
+        selected_filters: parsedFilters,
+      };
+    });
+
+    res.json({
+      success: true,
+      message: `Retrieved ${processedBookings.length} bookings`,
+      data: {
+        bookings: processedBookings,
+        total_count: processedBookings.length,
+        filters_applied: {
+          status: status || "all",
+          service_id: service_id || "all",
+          search: search || null,
+          date_range: {
+            from: date_from || null,
+            to: date_to || null,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get admin bookings error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve bookings",
+      error: error.message,
+    });
+  }
 }
 
 // 2. GET AVAILABLE PROVIDERS FOR ASSIGNMENT
@@ -3821,6 +3998,394 @@ static async getProviderConfigurationsByMobile(req, res) {
       });
     }
   }
+
+  // ✅ Get booking details by ID
+// static async getAdminBookingById(req, res) {
+//   try {
+//     const { id } = req.params;
+
+//     if (!id) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Booking ID is required"
+//       });
+//     }
+
+//     const query = `
+//       SELECT 
+//         sb.id,
+//         sb.booking_id,
+//         sb.customer_id,
+//         sb.service_id,
+//         sb.assigned_provider_id,
+//         sb.assigned_crm_id,
+//         sb.interview_status,
+//         sb.interview_date,
+//         sb.interview_time,
+//         sb.booking_status,
+//         sb.total_amount,
+//         sb.estimated_cost,
+//         sb.remarks,
+//         sb.service_address,
+//         sb.customer_filters,
+//         sb.service_start_date,
+//         sb.service_end_date,
+//         sb.service_start_time,
+//         sb.service_end_time,
+//         sb.created_at,
+
+//         -- Service
+//         st.name AS service_name,
+//         st.base_price AS service_base_price,
+
+//         -- Customer
+//         tc.name AS customer_name,
+//         tc.mobile AS customer_mobile,
+//         tc.email AS customer_email,
+
+//         -- Provider
+//         ai.full_name AS provider_name,
+//         ai.mobile_number AS provider_mobile,
+
+//         -- CRM User
+//         cu.id AS crm_user_id,
+//         cu.name AS crm_user_name,
+//         cu.email AS crm_user_email,
+//         cu.phone AS crm_user_phone
+
+//       FROM service_bookings sb
+//       LEFT JOIN service_types st ON sb.service_id = st.service_id
+//       LEFT JOIN temp_customers tc ON sb.customer_id = tc.id
+//       LEFT JOIN account_information ai ON sb.assigned_provider_id = ai.registration_id
+//       LEFT JOIN crm_users cu ON sb.assigned_crm_id = cu.id
+//       WHERE sb.id = ? OR sb.booking_id = ?
+//       LIMIT 1
+//     `;
+
+//     const [rows] = await db.execute(query, [id, id]);
+
+//     if (!rows || rows.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Booking not found"
+//       });
+//     }
+
+//     const booking = rows[0];
+
+//     // Parse filters if available
+//     let parsedFilters = {};
+//     if (booking.customer_filters) {
+//       try {
+//         parsedFilters =
+//           typeof booking.customer_filters === "string"
+//             ? JSON.parse(booking.customer_filters)
+//             : booking.customer_filters;
+//       } catch (err) {
+//         parsedFilters = {};
+//       }
+//     }
+
+//     // Prepare formatted output
+//     const response = {
+//       id: booking.id,
+//       booking_id: booking.booking_id,
+//       booking_status: booking.booking_status,
+//       total_amount: parseFloat(booking.total_amount || 0),
+//       estimated_cost: parseFloat(booking.estimated_cost || 0),
+//       remarks: booking.remarks,
+//       created_at: booking.created_at,
+
+//       service_details: {
+//         id: booking.service_id,
+//         name: booking.service_name,
+//         base_price: parseFloat(booking.service_base_price || 0)
+//       },
+
+//       customer_details: {
+//         id: booking.customer_id,
+//         name: booking.customer_name,
+//         mobile: booking.customer_mobile,
+//         email: booking.customer_email,
+//         address: booking.service_address
+//       },
+
+//       provider_details: booking.assigned_provider_id
+//         ? {
+//             id: booking.assigned_provider_id,
+//             name: booking.provider_name,
+//             mobile: booking.provider_mobile
+//           }
+//         : null,
+
+//       crm_details: booking.assigned_crm_id
+//         ? {
+//             crm_user_id: booking.crm_user_id,
+//             crm_user_name: booking.crm_user_name,
+//             crm_user_email: booking.crm_user_email,
+//             crm_user_phone: booking.crm_user_phone
+//           }
+//         : null,
+
+//       interview_details: {
+//         interview_status: booking.interview_status,
+//         interview_date: booking.interview_date,
+//         interview_time: booking.interview_time
+//       },
+
+//       selected_filters: parsedFilters
+//     };
+
+//     res.json({
+//       success: true,
+//       message: "Booking details retrieved successfully",
+//       data: response
+//     });
+//   } catch (error) {
+//     console.error("Get booking by ID error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Server error retrieving booking details",
+//       error: error.message
+//     });
+//   }
+// }
+  static async getAdminBookingById(req, res) {
+    try {
+      const idRaw = req.params?.id;
+      const id = idRaw ? String(idRaw).trim() : null;
+
+      if (!id || isNaN(id) || parseInt(id) <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Booking ID is required and must be a positive integer",
+        });
+      }
+
+      // 1️⃣ Booking basic info with customer and service details
+      const [bookingRows] = await db.execute(
+        `
+        SELECT
+          sb.id,
+          sb.booking_id,
+          sb.booking_status,
+          sb.total_amount,
+          sb.estimated_cost,
+          sb.remarks,
+          sb.service_address,
+          sb.customer_filters,
+          sb.assigned_provider_id,
+          sb.assigned_crm_id,
+          sb.interview_status,
+          sb.interview_date,
+          sb.interview_time,
+          sb.service_start_date,
+          sb.service_end_date,
+          sb.service_start_time,
+          sb.service_end_time,
+          sb.created_at,
+          st.service_id AS service_type_id,
+          st.name AS service_name,
+          st.description AS service_description,
+          st.base_price AS service_base_price,
+          tc.id AS customer_id,
+          tc.name AS customer_name,
+          tc.mobile AS customer_mobile,
+          tc.email AS customer_email
+        FROM service_bookings sb
+        LEFT JOIN service_types st ON sb.service_id = st.service_id
+        LEFT JOIN temp_customers tc ON sb.customer_id = tc.id
+        WHERE sb.id = ?
+        LIMIT 1
+        `,
+        [id]
+      );
+
+      if (!bookingRows.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Booking not found",
+        });
+      }
+
+      const booking = bookingRows[0];
+      let parsedFilters = [];
+      if (booking.customer_filters) {
+        try {
+          parsedFilters =
+            typeof booking.customer_filters === "string"
+              ? JSON.parse(booking.customer_filters)
+              : booking.customer_filters;
+        } catch {
+          parsedFilters = [];
+        }
+      }
+
+      // 2️⃣ Fetch provider details using provider_service_configurations
+      let providerDetails = null;
+      if (booking.assigned_provider_id) {
+        const [providerRows] = await db.execute(
+          `
+          SELECT
+            psc.config_id,
+            psc.provider_id,
+            psc.service_id,
+            psc.service_name,
+            psc.category_name,
+            psc.service_description,
+            psc.service_image_url,
+            psc.location_address,
+            psc.latitude,
+            psc.longitude,
+            psc.city,
+            psc.state,
+            psc.pincode,
+            psc.selected_filters,
+            psc.base_rate_type,
+            psc.base_rate,
+            psc.tax_percentage,
+            psc.discount_price,
+            psc.booking_charges,
+            psc.total_amount,
+            psc.final_amount_with_tax,
+            psc.status,
+            psc.is_active,
+            ai.registration_id AS provider_registration_id,
+            ai.full_name AS provider_name,
+            ai.mobile_number AS provider_mobile,
+            ai.email_address AS provider_email,
+            ai.profile_image AS provider_image,
+            st.name AS service_type_name,
+            st.description AS service_type_description
+          FROM provider_service_configurations psc
+          JOIN account_information ai ON psc.provider_id = ai.registration_id
+          LEFT JOIN service_types st ON psc.service_id = st.service_id
+          WHERE psc.provider_id = ? 
+          AND (psc.service_id = ? OR ? IS NULL)
+          LIMIT 1
+          `,
+          [
+            booking.assigned_provider_id,
+            booking.service_type_id || booking.service_id || null,
+            booking.service_type_id || booking.service_id || null,
+          ]
+        );
+
+        if (providerRows.length) {
+          const p = providerRows[0];
+
+          const baseRate = parseFloat(p.base_rate || 0);
+          const taxPercent = parseFloat(p.tax_percentage || 0);
+          const hoursTotal = 8 * 7 * 4; // 224 hours for 4 weeks
+          const subtotal = Math.round(baseRate * hoursTotal);
+          const tax = Math.round((subtotal * taxPercent) / 100);
+          const total_cost = Math.round(
+            subtotal + tax + parseFloat(p.booking_charges || 0)
+          );
+          const per_day_cost = Math.round(total_cost / 28);
+
+          providerDetails = {
+            provider_id: p.provider_id,
+            name: p.provider_name,
+            image: p.provider_image || "/default-provider.jpg",
+            service: {
+              name: p.service_type_name || p.service_name || "Unknown Service",
+              description: p.service_type_description || p.service_description,
+              category: p.category_name || "Home Services",
+            },
+            location: {
+              area: p.city ? `${p.city}, ${p.state}` : "Unknown Area",
+              latitude: p.latitude,
+              longitude: p.longitude,
+              pincode: p.pincode,
+            },
+            cost: {
+              base_rate: `₹${baseRate}/${p.base_rate_type || "hour"}`,
+              subtotal,
+              tax,
+              total_cost,
+              per_day_cost,
+            },
+            contact: {
+              mobile: p.provider_mobile,
+              email: p.provider_email,
+            },
+          };
+        }
+      }
+
+      // 3️⃣ Fetch filters from customer_filters (if exists)
+      let selectedFilters = parsedFilters;
+      try {
+        const [filterRows] = await db.execute(
+          `
+          SELECT cf.filter_id, sf.filter_name, cf.selected_values
+          FROM customer_filters cf
+          LEFT JOIN service_filters sf ON cf.filter_id = sf.filter_id
+          WHERE cf.booking_id = ?
+          `,
+          [booking.booking_id]
+        );
+
+        if (filterRows.length) {
+          selectedFilters = filterRows.map((r) => ({
+            filter_id: r.filter_id,
+            filter_name: r.filter_name,
+            selected_values: JSON.parse(r.selected_values || "[]"),
+          }));
+        }
+      } catch {
+        selectedFilters = parsedFilters;
+      }
+
+      // ✅ Final Response
+      const response = {
+        id: booking.id,
+        booking_id: booking.booking_id,
+        booking_status: booking.booking_status,
+        total_amount: Number(booking.total_amount) || null,
+        estimated_cost: Number(booking.estimated_cost) || null,
+        remarks: booking.remarks || null,
+        created_at: booking.created_at,
+        service_details: {
+          id: booking.service_id || booking.service_type_id || null,
+          name: booking.service_name,
+          base_price: Number(booking.service_base_price) || null,
+        },
+        customer_details: {
+          id: booking.customer_id,
+          name: booking.customer_name,
+          mobile: booking.customer_mobile,
+          email: booking.customer_email,
+          address: booking.service_address,
+        },
+        provider_details: providerDetails,
+        crm_details: booking.assigned_crm_id
+          ? { crm_user_id: booking.assigned_crm_id }
+          : null,
+        interview_details: {
+          interview_status: booking.interview_status,
+          interview_date: booking.interview_date,
+          interview_time: booking.interview_time,
+        },
+        selected_filters: selectedFilters,
+      };
+
+      res.json({
+        success: true,
+        message: "Booking details retrieved successfully",
+        data: response,
+      });
+    } catch (error) {
+      console.error("Get booking by ID error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error retrieving booking details",
+        error: error.message,
+      });
+    }
+  }
+
 }
 
 module.exports = ServiceBookingController;

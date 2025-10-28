@@ -850,6 +850,16 @@ app.patch('/api/booking/provider-configurations/:configId/toggle-status',
     handleValidationErrors,
     serviceBookingController.getAdminBookings
   );
+app.get(
+  '/api/booking/admin/bookings/:id',
+  [
+    param('id')
+      .isInt({ min: 1 })
+      .withMessage('Booking ID must be a positive integer')
+  ],
+  handleValidationErrors,
+  serviceBookingController.getAdminBookingById
+);
 
   app.get('/api/admin/bookings/:booking_id/available-providers',
     [
