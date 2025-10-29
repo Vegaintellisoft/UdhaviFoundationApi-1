@@ -3227,12 +3227,131 @@ static async getAvailableProviders(req, res) {
 //         });
 //     }
 // }
+
+// static async assignProvider(req, res) {
+//     try {
+//         const { booking_id } = req.params;
+//         const { 
+//             provider_id, 
+//             estimated_cost, 
+//             assignment_notes,
+//             admin_id = 'system'
+//         } = req.body;
+
+//         if (!provider_id) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Provider ID is required'
+//             });
+//         }
+
+//         // Get booking details
+//         const [bookingResult] = await db.execute(`
+//             SELECT * FROM service_bookings 
+//             WHERE id = ? OR booking_id = ?
+//         `, [booking_id, booking_id]);
+
+//         if (bookingResult.length === 0) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'Booking not found'
+//             });
+//         }
+
+//         const booking = bookingResult[0];
+
+//         // Get provider details
+//         const [providerResult] = await db.execute(`
+//             SELECT ai.*, psc.service_name, psc.base_rate, psc.base_rate_type
+//             FROM account_information ai
+//             LEFT JOIN provider_service_configurations psc 
+//                 ON ai.registration_id = psc.provider_id AND psc.service_id = ?
+//             WHERE ai.registration_id = ?
+//         `, [booking.service_id, provider_id]);
+
+//         if (providerResult.length === 0) {
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'Provider not found'
+//             });
+//         }
+
+//         const provider = providerResult[0];
+
+//         // Update booking with provider assignment
+//         const [updateResult] = await db.execute(`
+//             UPDATE service_bookings 
+//             SET 
+//                 assigned_provider_id = ?,
+//                 booking_status = 'assigned',
+//                 estimated_cost = ?,
+//                 assignment_date = NOW(),
+//                 assignment_notes = ?,
+//                 updated_at = NOW()
+//             WHERE id = ?
+//         `, [provider_id, estimated_cost || booking.total_amount, assignment_notes, booking.id]);
+
+//         if (updateResult.affectedRows === 0) {
+//             return res.status(500).json({
+//                 success: false,
+//                 message: 'Failed to assign provider'
+//             });
+//         }
+
+//         // Log the assignment
+//         try {
+//             await db.execute(`
+//                 INSERT INTO booking_assignment_history 
+//                 (booking_id, provider_id, assigned_by, assignment_date, notes)
+//                 VALUES (?, ?, ?, NOW(), ?)
+//             `, [booking.id, provider_id, admin_id, assignment_notes]);
+//         } catch (logError) {
+//             console.log('Assignment history logging failed:', logError);
+//             // Continue - this is not critical
+//         }
+
+//         res.json({
+//             success: true,
+//             message: 'Provider assigned successfully',
+//             data: {
+//                 booking_id: booking.booking_id,
+//                 provider_assigned: {
+//                     id: provider_id,
+//                     name: provider.full_name,
+//                     mobile: provider.mobile_number,
+//                     email: provider.email_address,
+//                     service: provider.service_name
+//                 },
+//                 booking_status: 'assigned',
+//                 estimated_cost: estimated_cost || booking.total_amount,
+//                 assignment_date: new Date().toISOString(),
+//                 assignment_notes: assignment_notes
+//             }
+//         });
+
+//     } catch (error) {
+//         console.error('Assign provider error:', error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Server error assigning provider',
+//             error: error.message
+//         });
+//     }
+// }
+
 static async assignProvider(req, res) {
     try {
         const { booking_id } = req.params;
         const { 
             provider_id, 
-            estimated_cost, 
+            base_cost = 0,
+            tax_amount = 0,
+            discount_amount = 0,
+            pf_option = 'no',
+            interview_status = 'pending',
+            interview_date,
+            interview_time,
+            remark,
             assignment_notes,
             admin_id = 'system'
         } = req.body;
@@ -3244,7 +3363,7 @@ static async assignProvider(req, res) {
             });
         }
 
-        // Get booking details
+        // ✅ 1. Fetch booking
         const [bookingResult] = await db.execute(`
             SELECT * FROM service_bookings 
             WHERE id = ? OR booking_id = ?
@@ -3259,9 +3378,9 @@ static async assignProvider(req, res) {
 
         const booking = bookingResult[0];
 
-        // Get provider details
+        // ✅ 2. Fetch provider
         const [providerResult] = await db.execute(`
-            SELECT ai.*, psc.service_name, psc.base_rate, psc.base_rate_type
+            SELECT ai.*, psc.service_name, psc.base_rate
             FROM account_information ai
             LEFT JOIN provider_service_configurations psc 
                 ON ai.registration_id = psc.provider_id AND psc.service_id = ?
@@ -3277,41 +3396,70 @@ static async assignProvider(req, res) {
 
         const provider = providerResult[0];
 
-        // Update booking with provider assignment
+        // ✅ 3. Compute cost logic
+        const base = parseFloat(base_cost) || 0;
+        const tax = parseFloat(tax_amount) || 0;
+        const discount = parseFloat(discount_amount) || 0;
+
+        // ✅ Calculation
+        const final_cost = base + tax - discount;
+
+        // ✅ 4. Update booking record
         const [updateResult] = await db.execute(`
             UPDATE service_bookings 
             SET 
                 assigned_provider_id = ?,
                 booking_status = 'assigned',
+                base_cost = ?,
+                tax_amount = ?,
+                discount_amount = ?,
                 estimated_cost = ?,
-                assignment_date = NOW(),
+                pf_option = ?,
+                interview_status = ?,
+                interview_date = ?,
+                interview_time = ?,
+                remark = ?,
                 assignment_notes = ?,
+                assignment_date = NOW(),
                 updated_at = NOW()
             WHERE id = ?
-        `, [provider_id, estimated_cost || booking.total_amount, assignment_notes, booking.id]);
+        `, [
+            provider_id,
+            base,
+            tax,
+            discount,
+            final_cost,
+            pf_option,
+            interview_status,
+            interview_date || null,
+            interview_time || null,
+            remark || null,
+            assignment_notes || null,
+            booking.id
+        ]);
 
         if (updateResult.affectedRows === 0) {
             return res.status(500).json({
                 success: false,
-                message: 'Failed to assign provider'
+                message: 'Failed to update booking assignment'
             });
         }
 
-        // Log the assignment
+        // ✅ 5. Log assignment history
         try {
             await db.execute(`
                 INSERT INTO booking_assignment_history 
                 (booking_id, provider_id, assigned_by, assignment_date, notes)
                 VALUES (?, ?, ?, NOW(), ?)
             `, [booking.id, provider_id, admin_id, assignment_notes]);
-        } catch (logError) {
-            console.log('Assignment history logging failed:', logError);
-            // Continue - this is not critical
+        } catch (logErr) {
+            console.warn('Assignment history log failed:', logErr.message);
         }
 
+        // ✅ 6. Send response
         res.json({
             success: true,
-            message: 'Provider assigned successfully',
+            message: 'Provider assigned successfully with automatic cost calculation',
             data: {
                 booking_id: booking.booking_id,
                 provider_assigned: {
@@ -3322,9 +3470,20 @@ static async assignProvider(req, res) {
                     service: provider.service_name
                 },
                 booking_status: 'assigned',
-                estimated_cost: estimated_cost || booking.total_amount,
-                assignment_date: new Date().toISOString(),
-                assignment_notes: assignment_notes
+                pf_option,
+                interview_status,
+                interview_date,
+                interview_time,
+                cost_details: {
+                    base_cost: base,
+                    tax_amount: tax,
+                    discount_amount: discount,
+                    final_cost
+                },
+                estimated_cost: final_cost,
+                remark,
+                assignment_notes,
+                assignment_date: new Date().toISOString()
             }
         });
 
@@ -3332,11 +3491,13 @@ static async assignProvider(req, res) {
         console.error('Assign provider error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error assigning provider',
+            message: 'Server error during provider assignment',
             error: error.message
         });
     }
 }
+
+
 
 
 // 4. UPDATE BOOKING NOTES
@@ -4150,241 +4311,241 @@ static async getProviderConfigurationsByMobile(req, res) {
 //     });
 //   }
 // }
-  static async getAdminBookingById(req, res) {
-    try {
-      const idRaw = req.params?.id;
-      const id = idRaw ? String(idRaw).trim() : null;
+static async getAdminBookingById(req, res) {
+  try {
+    const bookingIdRaw = req.params?.booking_id;
+    const booking_id = bookingIdRaw ? String(bookingIdRaw).trim() : null;
 
-      if (!id || isNaN(id) || parseInt(id) <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Booking ID is required and must be a positive integer",
-        });
-      }
-
-      // 1️⃣ Booking basic info with customer and service details
-      const [bookingRows] = await db.execute(
-        `
-        SELECT
-          sb.id,
-          sb.booking_id,
-          sb.booking_status,
-          sb.total_amount,
-          sb.estimated_cost,
-          sb.remarks,
-          sb.service_address,
-          sb.customer_filters,
-          sb.assigned_provider_id,
-          sb.assigned_crm_id,
-          sb.interview_status,
-          sb.interview_date,
-          sb.interview_time,
-          sb.service_start_date,
-          sb.service_end_date,
-          sb.service_start_time,
-          sb.service_end_time,
-          sb.created_at,
-          st.service_id AS service_type_id,
-          st.name AS service_name,
-          st.description AS service_description,
-          st.base_price AS service_base_price,
-          tc.id AS customer_id,
-          tc.name AS customer_name,
-          tc.mobile AS customer_mobile,
-          tc.email AS customer_email
-        FROM service_bookings sb
-        LEFT JOIN service_types st ON sb.service_id = st.service_id
-        LEFT JOIN temp_customers tc ON sb.customer_id = tc.id
-        WHERE sb.id = ?
-        LIMIT 1
-        `,
-        [id]
-      );
-
-      if (!bookingRows.length) {
-        return res.status(404).json({
-          success: false,
-          message: "Booking not found",
-        });
-      }
-
-      const booking = bookingRows[0];
-      let parsedFilters = [];
-      if (booking.customer_filters) {
-        try {
-          parsedFilters =
-            typeof booking.customer_filters === "string"
-              ? JSON.parse(booking.customer_filters)
-              : booking.customer_filters;
-        } catch {
-          parsedFilters = [];
-        }
-      }
-
-      // 2️⃣ Fetch provider details using provider_service_configurations
-      let providerDetails = null;
-      if (booking.assigned_provider_id) {
-        const [providerRows] = await db.execute(
-          `
-          SELECT
-            psc.config_id,
-            psc.provider_id,
-            psc.service_id,
-            psc.service_name,
-            psc.category_name,
-            psc.service_description,
-            psc.service_image_url,
-            psc.location_address,
-            psc.latitude,
-            psc.longitude,
-            psc.city,
-            psc.state,
-            psc.pincode,
-            psc.selected_filters,
-            psc.base_rate_type,
-            psc.base_rate,
-            psc.tax_percentage,
-            psc.discount_price,
-            psc.booking_charges,
-            psc.total_amount,
-            psc.final_amount_with_tax,
-            psc.status,
-            psc.is_active,
-            ai.registration_id AS provider_registration_id,
-            ai.full_name AS provider_name,
-            ai.mobile_number AS provider_mobile,
-            ai.email_address AS provider_email,
-            ai.profile_image AS provider_image,
-            st.name AS service_type_name,
-            st.description AS service_type_description
-          FROM provider_service_configurations psc
-          JOIN account_information ai ON psc.provider_id = ai.registration_id
-          LEFT JOIN service_types st ON psc.service_id = st.service_id
-          WHERE psc.provider_id = ? 
-          AND (psc.service_id = ? OR ? IS NULL)
-          LIMIT 1
-          `,
-          [
-            booking.assigned_provider_id,
-            booking.service_type_id || booking.service_id || null,
-            booking.service_type_id || booking.service_id || null,
-          ]
-        );
-
-        if (providerRows.length) {
-          const p = providerRows[0];
-
-          const baseRate = parseFloat(p.base_rate || 0);
-          const taxPercent = parseFloat(p.tax_percentage || 0);
-          const hoursTotal = 8 * 7 * 4; // 224 hours for 4 weeks
-          const subtotal = Math.round(baseRate * hoursTotal);
-          const tax = Math.round((subtotal * taxPercent) / 100);
-          const total_cost = Math.round(
-            subtotal + tax + parseFloat(p.booking_charges || 0)
-          );
-          const per_day_cost = Math.round(total_cost / 28);
-
-          providerDetails = {
-            provider_id: p.provider_id,
-            name: p.provider_name,
-            image: p.provider_image || "/default-provider.jpg",
-            service: {
-              name: p.service_type_name || p.service_name || "Unknown Service",
-              description: p.service_type_description || p.service_description,
-              category: p.category_name || "Home Services",
-            },
-            location: {
-              area: p.city ? `${p.city}, ${p.state}` : "Unknown Area",
-              latitude: p.latitude,
-              longitude: p.longitude,
-              pincode: p.pincode,
-            },
-            cost: {
-              base_rate: `₹${baseRate}/${p.base_rate_type || "hour"}`,
-              subtotal,
-              tax,
-              total_cost,
-              per_day_cost,
-            },
-            contact: {
-              mobile: p.provider_mobile,
-              email: p.provider_email,
-            },
-          };
-        }
-      }
-
-      // 3️⃣ Fetch filters from customer_filters (if exists)
-      let selectedFilters = parsedFilters;
-      try {
-        const [filterRows] = await db.execute(
-          `
-          SELECT cf.filter_id, sf.filter_name, cf.selected_values
-          FROM customer_filters cf
-          LEFT JOIN service_filters sf ON cf.filter_id = sf.filter_id
-          WHERE cf.booking_id = ?
-          `,
-          [booking.booking_id]
-        );
-
-        if (filterRows.length) {
-          selectedFilters = filterRows.map((r) => ({
-            filter_id: r.filter_id,
-            filter_name: r.filter_name,
-            selected_values: JSON.parse(r.selected_values || "[]"),
-          }));
-        }
-      } catch {
-        selectedFilters = parsedFilters;
-      }
-
-      // ✅ Final Response
-      const response = {
-        id: booking.id,
-        booking_id: booking.booking_id,
-        booking_status: booking.booking_status,
-        total_amount: Number(booking.total_amount) || null,
-        estimated_cost: Number(booking.estimated_cost) || null,
-        remarks: booking.remarks || null,
-        created_at: booking.created_at,
-        service_details: {
-          id: booking.service_id || booking.service_type_id || null,
-          name: booking.service_name,
-          base_price: Number(booking.service_base_price) || null,
-        },
-        customer_details: {
-          id: booking.customer_id,
-          name: booking.customer_name,
-          mobile: booking.customer_mobile,
-          email: booking.customer_email,
-          address: booking.service_address,
-        },
-        provider_details: providerDetails,
-        crm_details: booking.assigned_crm_id
-          ? { crm_user_id: booking.assigned_crm_id }
-          : null,
-        interview_details: {
-          interview_status: booking.interview_status,
-          interview_date: booking.interview_date,
-          interview_time: booking.interview_time,
-        },
-        selected_filters: selectedFilters,
-      };
-
-      res.json({
-        success: true,
-        message: "Booking details retrieved successfully",
-        data: response,
-      });
-    } catch (error) {
-      console.error("Get booking by ID error:", error);
-      res.status(500).json({
+    if (!booking_id) {
+      return res.status(400).json({
         success: false,
-        message: "Server error retrieving booking details",
-        error: error.message,
+        message: "Booking ID is required",
       });
     }
+
+    // 1️⃣ Booking info
+    const [bookingRows] = await db.execute(
+      `
+      SELECT
+        sb.id,
+        sb.booking_id,
+        sb.booking_status,
+        sb.total_amount,
+        sb.estimated_cost,
+        sb.remarks,
+        sb.service_address,
+        sb.customer_filters,
+        sb.assigned_provider_id,
+        sb.assigned_crm_id,
+        sb.interview_status,
+        sb.interview_date,
+        sb.interview_time,
+        sb.service_start_date,
+        sb.service_end_date,
+        sb.service_start_time,
+        sb.service_end_time,
+        sb.created_at,
+        st.service_id AS service_type_id,
+        st.name AS service_name,
+        st.description AS service_description,
+        st.base_price AS service_base_price,
+        tc.id AS customer_id,
+        tc.name AS customer_name,
+        tc.mobile AS customer_mobile,
+        tc.email AS customer_email
+      FROM service_bookings sb
+      LEFT JOIN service_types st ON sb.service_id = st.service_id
+      LEFT JOIN temp_customers tc ON sb.customer_id = tc.id
+      WHERE sb.booking_id = ?
+      LIMIT 1
+      `,
+      [booking_id]
+    );
+
+    if (!bookingRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const booking = bookingRows[0];
+    let parsedFilters = [];
+    if (booking.customer_filters) {
+      try {
+        parsedFilters =
+          typeof booking.customer_filters === "string"
+            ? JSON.parse(booking.customer_filters)
+            : booking.customer_filters;
+      } catch {
+        parsedFilters = [];
+      }
+    }
+
+    // 2️⃣ Provider info
+    let providerDetails = null;
+    if (booking.assigned_provider_id) {
+      const [providerRows] = await db.execute(
+        `
+        SELECT
+          psc.config_id,
+          psc.provider_id,
+          psc.service_id,
+          psc.service_name,
+          psc.category_name,
+          psc.service_description,
+          psc.service_image_url,
+          psc.location_address,
+          psc.latitude,
+          psc.longitude,
+          psc.city,
+          psc.state,
+          psc.pincode,
+          psc.selected_filters,
+          psc.base_rate_type,
+          psc.base_rate,
+          psc.tax_percentage,
+          psc.discount_price,
+          psc.booking_charges,
+          psc.total_amount,
+          psc.final_amount_with_tax,
+          psc.status,
+          psc.is_active,
+          ai.registration_id AS provider_registration_id,
+          ai.full_name AS provider_name,
+          ai.mobile_number AS provider_mobile,
+          ai.email_address AS provider_email,
+          ai.profile_image AS provider_image,
+          st.name AS service_type_name,
+          st.description AS service_type_description
+        FROM provider_service_configurations psc
+        JOIN account_information ai ON psc.provider_id = ai.registration_id
+        LEFT JOIN service_types st ON psc.service_id = st.service_id
+        WHERE psc.provider_id = ?
+        AND (psc.service_id = ? OR ? IS NULL)
+        LIMIT 1
+        `,
+        [
+          booking.assigned_provider_id,
+          booking.service_type_id || booking.service_id || null,
+          booking.service_type_id || booking.service_id || null,
+        ]
+      );
+
+      if (providerRows.length) {
+        const p = providerRows[0];
+        const baseRate = parseFloat(p.base_rate || 0);
+        const taxPercent = parseFloat(p.tax_percentage || 0);
+        const hoursTotal = 8 * 7 * 4;
+        const subtotal = Math.round(baseRate * hoursTotal);
+        const tax = Math.round((subtotal * taxPercent) / 100);
+        const total_cost = Math.round(
+          subtotal + tax + parseFloat(p.booking_charges || 0)
+        );
+        const per_day_cost = Math.round(total_cost / 28);
+
+        providerDetails = {
+          provider_id: p.provider_id,
+          name: p.provider_name,
+          image: p.provider_image || "/default-provider.jpg",
+          service: {
+            name: p.service_type_name || p.service_name || "Unknown Service",
+            description: p.service_type_description || p.service_description,
+            category: p.category_name || "Home Services",
+          },
+          location: {
+            area: p.city ? `${p.city}, ${p.state}` : "Unknown Area",
+            latitude: p.latitude,
+            longitude: p.longitude,
+            pincode: p.pincode,
+          },
+          cost: {
+            base_rate: `₹${baseRate}/${p.base_rate_type || "hour"}`,
+            subtotal,
+            tax,
+            total_cost,
+            per_day_cost,
+          },
+          contact: {
+            mobile: p.provider_mobile,
+            email: p.provider_email,
+          },
+        };
+      }
+    }
+
+    // 3️⃣ Filters
+    let selectedFilters = parsedFilters;
+    try {
+      const [filterRows] = await db.execute(
+        `
+        SELECT cf.filter_id, sf.filter_name, cf.selected_values
+        FROM customer_filters cf
+        LEFT JOIN service_filters sf ON cf.filter_id = sf.filter_id
+        WHERE cf.booking_id = ?
+        `,
+        [booking.booking_id]
+      );
+
+      if (filterRows.length) {
+        selectedFilters = filterRows.map((r) => ({
+          filter_id: r.filter_id,
+          filter_name: r.filter_name,
+          selected_values: JSON.parse(r.selected_values || "[]"),
+        }));
+      }
+    } catch {
+      selectedFilters = parsedFilters;
+    }
+
+    // ✅ Final response
+    const response = {
+      id: booking.id,
+      booking_id: booking.booking_id,
+      booking_status: booking.booking_status,
+      total_amount: Number(booking.total_amount) || null,
+      estimated_cost: Number(booking.estimated_cost) || null,
+      remarks: booking.remarks || null,
+      created_at: booking.created_at,
+      service_details: {
+        id: booking.service_id || booking.service_type_id || null,
+        name: booking.service_name,
+        base_price: Number(booking.service_base_price) || null,
+      },
+      customer_details: {
+        id: booking.customer_id,
+        name: booking.customer_name,
+        mobile: booking.customer_mobile,
+        email: booking.customer_email,
+        address: booking.service_address,
+      },
+      provider_details: providerDetails,
+      crm_details: booking.assigned_crm_id
+        ? { crm_user_id: booking.assigned_crm_id }
+        : null,
+      interview_details: {
+        interview_status: booking.interview_status,
+        interview_date: booking.interview_date,
+        interview_time: booking.interview_time,
+      },
+      selected_filters: selectedFilters,
+    };
+
+    res.json({
+      success: true,
+      message: "Booking details retrieved successfully",
+      data: response,
+    });
+  } catch (error) {
+    console.error("Get booking by ID error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error retrieving booking details",
+      error: error.message,
+    });
   }
+}
+
 
 }
 

@@ -850,16 +850,19 @@ app.patch('/api/booking/provider-configurations/:configId/toggle-status',
     handleValidationErrors,
     serviceBookingController.getAdminBookings
   );
-app.get(
-  '/api/booking/admin/bookings/:id',
-  [
-    param('id')
-      .isInt({ min: 1 })
-      .withMessage('Booking ID must be a positive integer')
-  ],
-  handleValidationErrors,
-  serviceBookingController.getAdminBookingById
-);
+// // ✅ Get booking details by booking_id (e.g. BK1760589362672)
+// app.get(
+//   "/api/booking/admin/bookings/:booking_id",
+//   [
+//     param("booking_id")
+//       .isString()
+//       .trim()
+//       .notEmpty()
+//       .withMessage("Booking ID must be a valid string"),
+//   ],
+//   handleValidationErrors,
+//   serviceBookingController.getAdminBookingByBookingId // ✅ NEW CONTROLLER FUNCTION
+// );
 
   app.get('/api/admin/bookings/:booking_id/available-providers',
     [
@@ -1071,6 +1074,19 @@ if (serviceBookingController) {
   app.get('/api/booking/service-filters/:service_id',
     serviceBookingController.getServiceFilters
   );
+
+  app.get(
+  '/api/booking/admin/bookings/:booking_id',
+  [
+    param('booking_id')
+      .isString()
+      .trim()
+      .notEmpty()
+      .withMessage('Booking ID must be a valid string')
+  ],
+  handleValidationErrors,
+  serviceBookingController.getAdminBookingById
+);
 
   // ==========================================
   // ADMIN BOOKING MANAGEMENT ROUTES ⭐ CRITICAL
@@ -2104,6 +2120,8 @@ if (dropdownController) {
       '/available-days': 'getAvailableDays',
       '/time-slots': 'getTimeSlots',
       '/relationship-types': 'getRelationshipTypes',
+      '/interview-status': 'getInterviewStatus',
+      '/pf-toggle': 'getPfToggle',
     };
 
     Object.entries(routes).forEach(([route, handler]) => {

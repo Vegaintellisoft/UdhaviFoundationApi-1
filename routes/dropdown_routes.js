@@ -202,4 +202,12 @@ router.get('/service-types', registrationDropdownController.getServiceTypes);
  */
 router.get('/work-types', registrationDropdownController.getWorkTypes);
 
+
+// Get Interview Status Dropdown
+router.get('/dropdown/interview-status', registrationDropdownController.getInterviewStatus);
+
+// Get PF Toggle Dropdown
+router.get('/dropdown/pf-toggle', registrationDropdownController.getPfToggle);
+
+
 module.exports = router;

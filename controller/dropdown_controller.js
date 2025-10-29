@@ -344,8 +344,43 @@ class DropdownController {
             });
         });
     }
+
+// ---- Get Interview Status Dropdown ----
+static getInterviewStatus(req, res) {
+  db.query(queries.getInterviewStatus, (err, results) => {
+    if (err) {
+      console.error('Error fetching interview status:', err);
+      return res.status(500).json({
+        success: false,
+        error: { message: 'Failed to fetch interview status dropdown' }
+      });
+    }
+    res.json({
+      success: true,
+      message: 'Interview status dropdown fetched successfully',
+      data: results
+    });
+  });
 }
 
+// ---- Get PF Toggle Dropdown ----
+static getPfToggle(req, res) {
+  db.query(queries.getPfToggle, (err, results) => {
+    if (err) {
+      console.error('Error fetching PF toggle:', err);
+      return res.status(500).json({
+        success: false,
+        error: { message: 'Failed to fetch PF toggle dropdown' }
+      });
+    }
+    res.json({
+      success: true,
+      message: 'PF toggle dropdown fetched successfully',
+      data: results
+    });
+  });
+}
+}
 // Get cities by state ID
 // const getCitiesByState = async (req, res) => {
 //     console.log('🏙️ Getting cities for state:', req.params.stateId);
@@ -446,6 +481,8 @@ const getCitiesByState = async (req, res) => {
             error: { message: 'Failed to fetch cities' }
         });
     }
+
+    
 };
 
 module.exports = DropdownController;
